@@ -1,0 +1,29 @@
+{
+  "name": "solana-trends-agent",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "lib"
+  ],
+  "scripts": {
+    "dev": "cd apps/dashboard && npm run dev",
+    "agent": "tsx apps/agent/src/index.ts",
+    "build": "npm run build --workspaces --if-present",
+    "mcp": "tsx packages/mcp/src/index.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "tsx": "^4.7.0",
+    "@types/node": "^20.11.0",
+    "@types/better-sqlite3": "^7.6.8"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.91.0",
+    "better-sqlite3": "^11.0.0",
+    "bs58": "^5.0.0",
+    "dotenv": "^17.3.0",
+    "openai": "^4.86.0"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@trendsurfer/skill": ["./packages/skill/src"],
+      "@trendsurfer/lib/*": ["./lib/*"]
+    }
+  },
+  "include": ["packages/**/*.ts", "apps/**/*.ts", "lib/**/*.ts", "scripts/**/*.ts"],
+  "exclude": ["node_modules", "dist", "apps/dashboard"]
+}
