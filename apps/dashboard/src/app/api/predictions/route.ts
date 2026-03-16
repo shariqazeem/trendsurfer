@@ -55,7 +55,8 @@ export async function GET() {
       }))
 
     return NextResponse.json({ predictions, launches })
-  } catch {
-    return NextResponse.json({ predictions: [], launches: [] })
+  } catch (error) {
+    console.error('Predictions API error:', error)
+    return NextResponse.json({ predictions: [], launches: [], error: String(error) })
   }
 }
