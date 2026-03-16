@@ -47,10 +47,10 @@ export interface TradeDecision {
   positionSize: number // in SOL
 }
 
-export function evaluateTrade(
+export async function evaluateTrade(
   analysis: GraduationAnalysis,
   securityScore: number
-): TradeDecision {
+): Promise<TradeDecision> {
   // Check cooldown
   if (Date.now() - lastTradeTimestamp < config.cooldownMs) {
     return {
@@ -88,7 +88,7 @@ export function evaluateTrade(
   }
 
   // Check open positions
-  const openPositions = getOpenPositions()
+  const openPositions = await getOpenPositions()
   if (openPositions.length >= config.maxOpenPositions) {
     return {
       shouldTrade: false,

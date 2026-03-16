@@ -1,16 +1,23 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@libsql/client'
+
+function getDbClient() {
+  const tursoUrl = process.env.TURSO_DATABASE_URL
+  if (tursoUrl) {
+    return createClient({ url: tursoUrl, authToken: process.env.TURSO_AUTH_TOKEN })
+  }
+  const path = require('path')
+  const dbPath = process.env.DATABASE_URL || path.join(process.cwd(), '../../data/trendsurfer.db')
+  return createClient({ url: `file:${dbPath}` })
+}
 
 export async function GET() {
   try {
-    const Database = (await import('better-sqlite3')).default
-    const path = await import('path')
-    const dbPath = process.env.DATABASE_URL || path.join(process.cwd(), '../../data/trendsurfer.db')
+    const db = getDbClient()
 
-    const db = new Database(dbPath, { readonly: true })
+    const posResult = await db.execute('SELECT * FROM positions ORDER BY entry_timestamp DESC LIMIT 100')
 
-    const positions = db.prepare(`
-      SELECT * FROM positions ORDER BY entry_timestamp DESC LIMIT 100
-    `).all().map((row: any) => ({
+    const positions = posResult.rows.map((row: any) => ({
       id: row.id,
       mint: row.mint,
       symbol: row.symbol,
@@ -27,15 +34,14 @@ export async function GET() {
       reasoning: row.reasoning,
     }))
 
-    const pnl = db.prepare(`
+    const pnlResult = await db.execute(`
       SELECT
         COALESCE(SUM(realized_pnl), 0) as totalPnl,
         COUNT(*) as totalTrades,
         COALESCE(SUM(CASE WHEN realized_pnl > 0 THEN 1 ELSE 0 END), 0) as wins
       FROM positions WHERE status = 'closed'
-    `).get() as any
-
-    db.close()
+    `)
+    const pnl = pnlResult.rows[0] as any
 
     return NextResponse.json({
       positions,

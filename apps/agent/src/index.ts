@@ -13,6 +13,7 @@ import { TrendSurferSkill } from '../../../packages/skill/src'
 import { analyzeWithClaude } from './claude'
 import { evaluateTrade, checkExitConditions, recordTradeTimestamp, getRiskConfig, updateRiskConfig, type RiskConfig, type ExitDecision } from './risk'
 import {
+  initDb,
   savePrediction,
   savePosition,
   getOpenPositions,
@@ -54,6 +55,9 @@ export async function startAgent(riskConfig?: Partial<RiskConfig>): Promise<void
     updateRiskConfig(riskConfig)
   }
 
+  // Initialize database (creates tables if needed)
+  await initDb()
+
   // Determine mode
   paperMode = !hasWallet()
   const walletAddress = paperMode ? '(paper mode)' : getWalletAddress()
@@ -61,7 +65,7 @@ export async function startAgent(riskConfig?: Partial<RiskConfig>): Promise<void
   running = true
   startTime = Date.now()
 
-  logAgent('info', 'TrendSurfer Agent started', {
+  await logAgent('info', 'TrendSurfer Agent started', {
     mode: paperMode ? 'paper' : 'live',
     wallet: walletAddress,
     config: getRiskConfig(),
@@ -109,7 +113,7 @@ async function runScanCycle(): Promise<void> {
     tokensScanned += result.launches.length
 
     if (result.launches.length > 0) {
-      logAgent('info', `Found ${result.launches.length} new launches`)
+      await logAgent('info', `Found ${result.launches.length} new launches`)
       console.log(`\n--- Scan at ${new Date().toLocaleTimeString()} ---`)
       console.log(`Found ${result.launches.length} new launches`)
     }
@@ -130,7 +134,7 @@ async function runScanCycle(): Promise<void> {
       await analyzeLaunch(launch)
     }
   } catch (error) {
-    logAgent('error', 'Scan cycle error', { error: String(error) })
+    await logAgent('error', 'Scan cycle error', { error: String(error) })
     console.error('Scan cycle error:', error)
   }
 }
@@ -179,7 +183,7 @@ async function analyzeLaunch(launch: TokenLaunch): Promise<void> {
       outcome: 'pending',
       traded: false,
     }
-    savePrediction(pred)
+    await savePrediction(pred)
 
     const emoji = prediction === 'will_graduate' ? '🟢' : prediction === 'watching' ? '🟡' : '🔴'
     console.log(
@@ -189,10 +193,10 @@ async function analyzeLaunch(launch: TokenLaunch): Promise<void> {
 
     // 5. Trade decision
     if (prediction === 'will_graduate' && security.safe) {
-      const decision = evaluateTrade(onChainAnalysis, security.safe ? 80 : 20)
+      const decision = await evaluateTrade(onChainAnalysis, security.safe ? 80 : 20)
 
       if (decision.shouldTrade) {
-        logAgent('trade', `Buy signal for ${launch.symbol}`, {
+        await logAgent('trade', `Buy signal for ${launch.symbol}`, {
           positionSize: decision.positionSize,
           score,
           reasoning,
@@ -203,7 +207,7 @@ async function analyzeLaunch(launch: TokenLaunch): Promise<void> {
         } else {
           // Paper trade — log the signal
           console.log(`  PAPER BUY: ${decision.positionSize} SOL of ${launch.symbol}`)
-          logAgent('info', `Paper buy signal: ${launch.symbol}`, {
+          await logAgent('info', `Paper buy signal: ${launch.symbol}`, {
             positionSize: decision.positionSize,
             score,
           })
@@ -213,7 +217,7 @@ async function analyzeLaunch(launch: TokenLaunch): Promise<void> {
       }
     }
   } catch (error) {
-    logAgent('error', `Analysis error for ${launch.symbol}`, {
+    await logAgent('error', `Analysis error for ${launch.symbol}`, {
       error: String(error),
     })
     console.error(`Analysis error for ${launch.symbol}:`, error)
@@ -252,17 +256,17 @@ async function executeBuy(
       graduationScore: analysis.score,
       reasoning: analysis.reasoning,
     }
-    savePosition(position)
+    await savePosition(position)
     recordTradeTimestamp()
 
-    logAgent('trade', `Bought ${launch.symbol}`, {
+    await logAgent('trade', `Bought ${launch.symbol}`, {
       positionSize: positionSizeSol,
       price: trade.price,
       txHash: trade.txHash,
     })
     console.log(`  BUY executed: ${trade.txHash}`)
   } catch (error) {
-    logAgent('error', `Trade execution failed for ${launch.symbol}`, {
+    await logAgent('error', `Trade execution failed for ${launch.symbol}`, {
       error: String(error),
     })
     console.error(`  Trade failed:`, error)
@@ -274,7 +278,7 @@ async function executeBuy(
 async function runMonitorCycle(): Promise<void> {
   if (!running) return
 
-  const openPositions = getOpenPositions()
+  const openPositions = await getOpenPositions()
   if (openPositions.length === 0) return
 
   for (const position of openPositions) {
@@ -315,7 +319,7 @@ async function runMonitorCycle(): Promise<void> {
         if (isPartial) {
           // ── Partial Exit (e.g., 50% on graduation) ──
           console.log(`\nPARTIAL EXIT: ${position.symbol} | ${decision.reason}`)
-          logAgent('trade', `Partial exit for ${position.symbol}`, {
+          await logAgent('trade', `Partial exit for ${position.symbol}`, {
             exitType: decision.exitType,
             reason: decision.reason,
             sellPercent: decision.sellPercent,
@@ -350,7 +354,7 @@ async function runMonitorCycle(): Promise<void> {
         } else {
           // ── Full Exit (stop loss, trailing stop, take profit) ──
           console.log(`\nEXIT: ${position.symbol} | ${decision.reason} | PnL: ${unrealizedPnlPercent.toFixed(1)}%`)
-          logAgent('trade', `Exit ${position.symbol}`, {
+          await logAgent('trade', `Exit ${position.symbol}`, {
             exitType: decision.exitType,
             reason: decision.reason,
             pnlPercent: unrealizedPnlPercent,
@@ -382,7 +386,7 @@ async function runMonitorCycle(): Promise<void> {
         }
       }
 
-      savePosition(position)
+      await savePosition(position)
     } catch {
       // Price fetch might fail for new tokens
     }
@@ -391,9 +395,9 @@ async function runMonitorCycle(): Promise<void> {
 
 // ── Status ──
 
-export function getStatus(): AgentStatus {
-  const { totalPnl, winRate, totalTrades } = getTotalPnl()
-  const openPositions = getOpenPositions()
+export async function getStatus(): Promise<AgentStatus> {
+  const { totalPnl, winRate, totalTrades } = await getTotalPnl()
+  const openPositions = await getOpenPositions()
 
   return {
     running,

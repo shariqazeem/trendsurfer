@@ -1,27 +1,39 @@
-// ── SQLite Database ──
-// Stores predictions, trades, and PnL history
+// ── Turso/libSQL Database ──
+// Works with both local SQLite files (dev) and remote Turso (production)
+// Set TURSO_DATABASE_URL + TURSO_AUTH_TOKEN for remote, or falls back to local file
 
-import Database from 'better-sqlite3'
+import { createClient, type Client } from '@libsql/client'
 import path from 'path'
-import type { Position, Prediction, AgentStatus } from '../../../lib/types'
+import type { Position, Prediction } from '../../../lib/types'
 
-const DB_PATH = process.env.DATABASE_URL || path.join(process.cwd(), 'data', 'trendsurfer.db')
+let client: Client | null = null
 
-let db: Database.Database | null = null
+export function getDb(): Client {
+  if (!client) {
+    const tursoUrl = process.env.TURSO_DATABASE_URL
+    const tursoToken = process.env.TURSO_AUTH_TOKEN
 
-export function getDb(): Database.Database {
-  if (!db) {
-    db = new Database(DB_PATH)
-    db.pragma('journal_mode = WAL')
-    initTables()
+    if (tursoUrl) {
+      // Remote Turso database
+      client = createClient({
+        url: tursoUrl,
+        authToken: tursoToken,
+      })
+    } else {
+      // Local SQLite file for development
+      const dbPath = process.env.DATABASE_URL || path.join(process.cwd(), 'data', 'trendsurfer.db')
+      client = createClient({
+        url: `file:${dbPath}`,
+      })
+    }
   }
-  return db
+  return client
 }
 
-function initTables() {
+export async function initDb(): Promise<void> {
   const d = getDb()
 
-  d.exec(`
+  await d.executeMultiple(`
     CREATE TABLE IF NOT EXISTS predictions (
       id TEXT PRIMARY KEY,
       mint TEXT NOT NULL,
@@ -75,53 +87,53 @@ function initTables() {
 
   // Migrate existing positions table — add new columns if missing
   try {
-    d.exec(`ALTER TABLE positions ADD COLUMN highest_price REAL`)
+    await d.execute('ALTER TABLE positions ADD COLUMN highest_price REAL')
   } catch { /* column already exists */ }
   try {
-    d.exec(`ALTER TABLE positions ADD COLUMN partial_exit_done INTEGER DEFAULT 0`)
+    await d.execute('ALTER TABLE positions ADD COLUMN partial_exit_done INTEGER DEFAULT 0')
   } catch { /* column already exists */ }
 }
 
 // ── Predictions ──
 
-export function savePrediction(prediction: Prediction): void {
+export async function savePrediction(prediction: Prediction): Promise<void> {
   const d = getDb()
-  d.prepare(`
-    INSERT OR REPLACE INTO predictions (id, mint, symbol, name, score, curve_progress, velocity, reasoning, prediction, created_at, resolved_at, outcome, traded)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    prediction.id,
-    prediction.mint,
-    prediction.symbol,
-    prediction.name,
-    prediction.score,
-    prediction.curveProgress,
-    prediction.velocity,
-    prediction.reasoning,
-    prediction.prediction,
-    prediction.createdAt,
-    prediction.resolvedAt || null,
-    prediction.outcome || 'pending',
-    prediction.traded ? 1 : 0
+  await d.execute({
+    sql: `INSERT OR REPLACE INTO predictions (id, mint, symbol, name, score, curve_progress, velocity, reasoning, prediction, created_at, resolved_at, outcome, traded)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      prediction.id,
+      prediction.mint,
+      prediction.symbol,
+      prediction.name,
+      prediction.score,
+      prediction.curveProgress,
+      prediction.velocity,
+      prediction.reasoning,
+      prediction.prediction,
+      prediction.createdAt,
+      prediction.resolvedAt || null,
+      prediction.outcome || 'pending',
+      prediction.traded ? 1 : 0,
+    ],
+  })
+}
+
+export async function getPredictions(limit: number = 50): Promise<Prediction[]> {
+  const d = getDb()
+  const result = await d.execute({
+    sql: 'SELECT * FROM predictions ORDER BY created_at DESC LIMIT ?',
+    args: [limit],
+  })
+  return result.rows.map(rowToPrediction)
+}
+
+export async function getActivePredictions(): Promise<Prediction[]> {
+  const d = getDb()
+  const result = await d.execute(
+    "SELECT * FROM predictions WHERE outcome = 'pending' ORDER BY score DESC"
   )
-}
-
-export function getPredictions(limit: number = 50): Prediction[] {
-  const d = getDb()
-  const rows = d.prepare(`
-    SELECT * FROM predictions ORDER BY created_at DESC LIMIT ?
-  `).all(limit) as any[]
-
-  return rows.map(rowToPrediction)
-}
-
-export function getActivePredictions(): Prediction[] {
-  const d = getDb()
-  const rows = d.prepare(`
-    SELECT * FROM predictions WHERE outcome = 'pending' ORDER BY score DESC
-  `).all() as any[]
-
-  return rows.map(rowToPrediction)
+  return result.rows.map(rowToPrediction)
 }
 
 function rowToPrediction(row: any): Prediction {
@@ -144,66 +156,67 @@ function rowToPrediction(row: any): Prediction {
 
 // ── Positions ──
 
-export function savePosition(position: Position): void {
+export async function savePosition(position: Position): Promise<void> {
   const d = getDb()
-  d.prepare(`
-    INSERT OR REPLACE INTO positions (id, mint, symbol, entry_price, entry_amount, entry_tx_hash, entry_timestamp, current_price, highest_price, partial_exit_done, exit_price, exit_amount, exit_tx_hash, exit_timestamp, realized_pnl, realized_pnl_percent, status, graduation_score, reasoning)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    position.id,
-    position.mint,
-    position.symbol,
-    position.entryPrice,
-    position.entryAmount,
-    position.entryTxHash,
-    position.entryTimestamp,
-    position.currentPrice || null,
-    position.highestPrice || null,
-    position.partialExitDone ? 1 : 0,
-    position.exitPrice || null,
-    position.exitAmount || null,
-    position.exitTxHash || null,
-    position.exitTimestamp || null,
-    position.realizedPnl || null,
-    position.realizedPnlPercent || null,
-    position.status,
-    position.graduationScore,
-    position.reasoning
+  await d.execute({
+    sql: `INSERT OR REPLACE INTO positions (id, mint, symbol, entry_price, entry_amount, entry_tx_hash, entry_timestamp, current_price, highest_price, partial_exit_done, exit_price, exit_amount, exit_tx_hash, exit_timestamp, realized_pnl, realized_pnl_percent, status, graduation_score, reasoning)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      position.id,
+      position.mint,
+      position.symbol,
+      position.entryPrice,
+      position.entryAmount,
+      position.entryTxHash,
+      position.entryTimestamp,
+      position.currentPrice || null,
+      position.highestPrice || null,
+      position.partialExitDone ? 1 : 0,
+      position.exitPrice || null,
+      position.exitAmount || null,
+      position.exitTxHash || null,
+      position.exitTimestamp || null,
+      position.realizedPnl || null,
+      position.realizedPnlPercent || null,
+      position.status,
+      position.graduationScore,
+      position.reasoning,
+    ],
+  })
+}
+
+export async function getOpenPositions(): Promise<Position[]> {
+  const d = getDb()
+  const result = await d.execute(
+    "SELECT * FROM positions WHERE status = 'open' ORDER BY entry_timestamp DESC"
   )
+  return result.rows.map(rowToPosition)
 }
 
-export function getOpenPositions(): Position[] {
+export async function getAllPositions(limit: number = 100): Promise<Position[]> {
   const d = getDb()
-  const rows = d.prepare(`
-    SELECT * FROM positions WHERE status = 'open' ORDER BY entry_timestamp DESC
-  `).all() as any[]
-
-  return rows.map(rowToPosition)
+  const result = await d.execute({
+    sql: 'SELECT * FROM positions ORDER BY entry_timestamp DESC LIMIT ?',
+    args: [limit],
+  })
+  return result.rows.map(rowToPosition)
 }
 
-export function getAllPositions(limit: number = 100): Position[] {
+export async function getTotalPnl(): Promise<{ totalPnl: number; winRate: number; totalTrades: number }> {
   const d = getDb()
-  const rows = d.prepare(`
-    SELECT * FROM positions ORDER BY entry_timestamp DESC LIMIT ?
-  `).all(limit) as any[]
-
-  return rows.map(rowToPosition)
-}
-
-export function getTotalPnl(): { totalPnl: number; winRate: number; totalTrades: number } {
-  const d = getDb()
-  const result = d.prepare(`
-    SELECT
+  const result = await d.execute(
+    `SELECT
       COALESCE(SUM(realized_pnl), 0) as total_pnl,
       COUNT(*) as total_trades,
       COALESCE(SUM(CASE WHEN realized_pnl > 0 THEN 1 ELSE 0 END), 0) as wins
-    FROM positions WHERE status = 'closed'
-  `).get() as any
+    FROM positions WHERE status = 'closed'`
+  )
+  const row = result.rows[0] as any
 
   return {
-    totalPnl: result.total_pnl,
-    totalTrades: result.total_trades,
-    winRate: result.total_trades > 0 ? (result.wins / result.total_trades) * 100 : 0,
+    totalPnl: row?.total_pnl || 0,
+    totalTrades: row?.total_trades || 0,
+    winRate: row?.total_trades > 0 ? (row.wins / row.total_trades) * 100 : 0,
   }
 }
 
@@ -233,16 +246,19 @@ function rowToPosition(row: any): Position {
 
 // ── Agent Log ──
 
-export function logAgent(level: string, message: string, data?: any): void {
+export async function logAgent(level: string, message: string, data?: any): Promise<void> {
   const d = getDb()
-  d.prepare(`
-    INSERT INTO agent_log (timestamp, level, message, data) VALUES (?, ?, ?, ?)
-  `).run(Date.now(), level, message, data ? JSON.stringify(data) : null)
+  await d.execute({
+    sql: 'INSERT INTO agent_log (timestamp, level, message, data) VALUES (?, ?, ?, ?)',
+    args: [Date.now(), level, message, data ? JSON.stringify(data) : null],
+  })
 }
 
-export function getAgentLogs(limit: number = 100): any[] {
+export async function getAgentLogs(limit: number = 100): Promise<any[]> {
   const d = getDb()
-  return d.prepare(`
-    SELECT * FROM agent_log ORDER BY timestamp DESC LIMIT ?
-  `).all(limit) as any[]
+  const result = await d.execute({
+    sql: 'SELECT * FROM agent_log ORDER BY timestamp DESC LIMIT ?',
+    args: [limit],
+  })
+  return result.rows as any[]
 }

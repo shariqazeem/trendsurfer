@@ -1,16 +1,24 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@libsql/client'
+
+function getDbClient() {
+  const tursoUrl = process.env.TURSO_DATABASE_URL
+  if (tursoUrl) {
+    return createClient({ url: tursoUrl, authToken: process.env.TURSO_AUTH_TOKEN })
+  }
+  // Local fallback
+  const path = require('path')
+  const dbPath = process.env.DATABASE_URL || path.join(process.cwd(), '../../data/trendsurfer.db')
+  return createClient({ url: `file:${dbPath}` })
+}
 
 export async function GET() {
   try {
-    const Database = (await import('better-sqlite3')).default
-    const path = await import('path')
-    const dbPath = process.env.DATABASE_URL || path.join(process.cwd(), '../../data/trendsurfer.db')
+    const db = getDbClient()
 
-    const db = new Database(dbPath, { readonly: true })
+    const result = await db.execute('SELECT * FROM predictions ORDER BY created_at DESC LIMIT 50')
 
-    const predictions = db.prepare(`
-      SELECT * FROM predictions ORDER BY created_at DESC LIMIT 50
-    `).all().map((row: any) => ({
+    const predictions = result.rows.map((row: any) => ({
       id: row.id,
       mint: row.mint,
       symbol: row.symbol,
@@ -45,8 +53,6 @@ export async function GET() {
         velocity: p.velocity,
         prediction: p.prediction,
       }))
-
-    db.close()
 
     return NextResponse.json({ predictions, launches })
   } catch {

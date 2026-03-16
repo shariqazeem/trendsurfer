@@ -1,15 +1,19 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@libsql/client'
 
-// In production, this would connect to the running agent process
-// For now, return mock status — agent runs as separate process and shares SQLite DB
+function getDbClient() {
+  const tursoUrl = process.env.TURSO_DATABASE_URL
+  if (tursoUrl) {
+    return createClient({ url: tursoUrl, authToken: process.env.TURSO_AUTH_TOKEN })
+  }
+  const path = require('path')
+  const dbPath = process.env.DATABASE_URL || path.join(process.cwd(), '../../data/trendsurfer.db')
+  return createClient({ url: `file:${dbPath}` })
+}
 
 export async function GET() {
   try {
-    // Try to read from shared SQLite database
-    // The agent and dashboard share the same DB file
-    const Database = (await import('better-sqlite3')).default
-    const path = await import('path')
-    const dbPath = process.env.DATABASE_URL || path.join(process.cwd(), '../../data/trendsurfer.db')
+    const db = getDbClient()
 
     let logs: any[] = []
     let status = {
@@ -25,22 +29,25 @@ export async function GET() {
     }
 
     try {
-      const db = new Database(dbPath, { readonly: true })
+      const logsResult = await db.execute('SELECT * FROM agent_log ORDER BY timestamp DESC LIMIT 100')
+      logs = logsResult.rows as any[]
 
-      logs = db.prepare('SELECT * FROM agent_log ORDER BY timestamp DESC LIMIT 100').all()
-
-      const pnl = db.prepare(`
+      const pnlResult = await db.execute(`
         SELECT
           COALESCE(SUM(realized_pnl), 0) as total_pnl,
           COUNT(*) as total_trades,
           COALESCE(SUM(CASE WHEN realized_pnl > 0 THEN 1 ELSE 0 END), 0) as wins
         FROM positions WHERE status = 'closed'
-      `).get() as any
+      `)
+      const pnl = pnlResult.rows[0] as any
 
-      const openCount = db.prepare('SELECT COUNT(*) as c FROM positions WHERE status = ?').get('open') as any
-      const predictions = db.prepare('SELECT COUNT(*) as c FROM predictions').get() as any
+      const openResult = await db.execute("SELECT COUNT(*) as c FROM positions WHERE status = 'open'")
+      const openCount = openResult.rows[0] as any
 
-      const lastLog = logs[0]
+      const predResult = await db.execute('SELECT COUNT(*) as c FROM predictions')
+      const predictions = predResult.rows[0] as any
+
+      const lastLog = logs[0] as any
 
       status = {
         running: lastLog ? (Date.now() - lastLog.timestamp < 60000) : false,
@@ -53,14 +60,12 @@ export async function GET() {
         winRate: pnl?.total_trades > 0 ? (pnl.wins / pnl.total_trades) * 100 : 0,
         lastScan: lastLog?.timestamp || 0,
       }
-
-      db.close()
     } catch {
       // DB might not exist yet
     }
 
     return NextResponse.json({ ...status, logs })
-  } catch (error) {
+  } catch {
     return NextResponse.json({
       running: false,
       uptime: 0,
