@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@libsql/client'
 
 function getDbClient() {
-  const tursoUrl = process.env.TURSO_DATABASE_URL
+  const tursoUrl = process.env.TURSO_DATABASE_URL?.trim()
   if (tursoUrl) {
-    return createClient({ url: tursoUrl, authToken: process.env.TURSO_AUTH_TOKEN })
+    return createClient({ url: tursoUrl, authToken: process.env.TURSO_AUTH_TOKEN?.trim() })
   }
   const path = require('path')
   const dbPath = process.env.DATABASE_URL || path.join(process.cwd(), '../../data/trendsurfer.db')

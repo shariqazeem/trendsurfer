@@ -10,8 +10,8 @@ let client: Client | null = null
 
 export function getDb(): Client {
   if (!client) {
-    const tursoUrl = process.env.TURSO_DATABASE_URL
-    const tursoToken = process.env.TURSO_AUTH_TOKEN
+    const tursoUrl = process.env.TURSO_DATABASE_URL?.trim()
+    const tursoToken = process.env.TURSO_AUTH_TOKEN?.trim()
 
     if (tursoUrl) {
       // Remote Turso database
