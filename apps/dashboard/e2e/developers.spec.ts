@@ -148,7 +148,7 @@ test.describe('Developers — SDK/MCP documentation page', () => {
   // ──────────────────────────────────────────────────────────────────────────
 
   test('stats grid shows 6 cards', async ({ page }) => {
-    const statLabels = ['MCP Tools', 'TypeScript', 'Analysis', 'Trading', 'Lines of Code', 'Framework']
+    const statLabels = ['MCP Tools', 'TypeScript', 'Micropayments', 'Trading', 'Per Analysis', 'Framework']
 
     for (const label of statLabels) {
       await expect(page.getByText(label, { exact: true }).first()).toBeVisible()

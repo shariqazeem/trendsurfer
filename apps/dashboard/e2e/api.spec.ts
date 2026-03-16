@@ -136,6 +136,34 @@ test.describe('API endpoints', () => {
   })
 
   // ──────────────────────────────────────────────────────────────────────────
+  // GET /api/intelligence (x402 paywalled)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  test('GET /api/intelligence returns 402 Payment Required without X-Payment header', async ({
+    request,
+  }) => {
+    const response = await request.get('/api/intelligence')
+    expect(response.status()).toBe(402)
+
+    const body = await response.json()
+    expect(body).toHaveProperty('error', 'Payment Required')
+    expect(body).toHaveProperty('x402')
+    expect(body.x402).toHaveProperty('accepts')
+    expect(body.x402).toHaveProperty('facilitator')
+
+    // Verify x402 payment requirements structure
+    const accept = body.x402.accepts[0]
+    expect(accept).toHaveProperty('scheme', 'exact')
+    expect(accept).toHaveProperty('network')
+    expect(accept.network).toContain('solana')
+    expect(accept).toHaveProperty('price', '$0.001')
+
+    // Must expose X-Payment-Required header
+    const paymentHeader = response.headers()['x-payment-required']
+    expect(paymentHeader).toBeTruthy()
+  })
+
+  // ──────────────────────────────────────────────────────────────────────────
   // Content-Type Validation
   // ──────────────────────────────────────────────────────────────────────────
 

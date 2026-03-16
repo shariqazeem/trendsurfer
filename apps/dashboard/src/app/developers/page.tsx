@@ -108,9 +108,9 @@ const sdkMethods: { category: string; methods: { name: string; returnType: strin
 const stats = [
   { value: '6', label: 'MCP Tools', desc: 'Plug into any AI agent' },
   { value: '100%', label: 'TypeScript', desc: 'Typed SDK, publishable to npm' },
-  { value: 'Real-time', label: 'Analysis', desc: 'Meteora DBC curve reading' },
+  { value: 'x402', label: 'Micropayments', desc: 'Pay-per-call AI analysis' },
   { value: 'Gasless', label: 'Trading', desc: 'Zero SOL gas via Bitget' },
-  { value: '3,800+', label: 'Lines of Code', desc: 'Production-ready skill' },
+  { value: '$0.001', label: 'Per Analysis', desc: 'USDC via x402 protocol' },
   { value: 'Any', label: 'Framework', desc: 'MCP is agent-agnostic' },
 ]
 
@@ -422,6 +422,71 @@ export default function DevelopersPage() {
                   </span>
                 </div>
               ))}
+            </div>
+          </div>
+        </motion.section>
+
+        {/* ──────────────────────────────────────────────────────────────────────── */}
+        {/* 4.5. x402 Micropayments                                                 */}
+        {/* ──────────────────────────────────────────────────────────────────────── */}
+        <motion.section className="pb-16" {...FADE_IN}>
+          <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium text-center mb-2">
+            x402 Micropayments
+          </p>
+          <p className="text-center text-sm text-gray-500 mb-8">
+            Pay-per-call AI analysis via the{' '}
+            <a href="https://www.x402.org" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+              x402 protocol
+            </a>
+            . $0.001 USDC per analysis. No API keys, no accounts -- just HTTP.
+          </p>
+
+          <div className="max-w-3xl mx-auto">
+            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200">
+                <span style={{ fontFamily: MONO_STACK }} className="text-[11px] text-gray-400">
+                  x402 flow
+                </span>
+                <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
+                  HTTP 402
+                </span>
+              </div>
+              <pre
+                className="p-5 text-[13px] leading-relaxed overflow-x-auto bg-gray-50"
+                style={{ fontFamily: MONO_STACK }}
+              >
+                <code>
+                  <Line><Cm>{'// 1. Request analysis — no payment header'}</Cm></Line>
+                  <Line><Kw>const</Kw> res = <Kw>await</Kw> <Fn>fetch</Fn>(<St>{`'/api/intelligence?mint=So1...'`}</St>)</Line>
+                  <Line><Cm>{'// → 402 Payment Required + X-Payment-Required header'}</Cm></Line>
+                  <Line />
+                  <Line><Cm>{'// 2. Pay $0.001 USDC on Solana and retry'}</Cm></Line>
+                  <Line><Kw>const</Kw> paid = <Kw>await</Kw> <Fn>fetch</Fn>(<St>{`'/api/intelligence?mint=So1...'`}</St>, {'{'}</Line>
+                  <Line>{'  '}<Pr>headers</Pr>: {'{ '}<St>{`'X-Payment'`}</St>: signedTx {' }'}</Line>
+                  <Line>{'})'}</Line>
+                  <Line><Cm>{'// → 200 OK + full AI graduation analysis'}</Cm></Line>
+                  <Line />
+                  <Line><Cm>{'// Response:'}</Cm></Line>
+                  <Line>{'{ '}<Pr>score</Pr>: <Nu>87</Nu>, <Pr>velocity</Pr>: <St>{`'accelerating'`}</St>,</Line>
+                  <Line>{'  '}<Pr>reasoning</Pr>: <St>{`'High curve velocity + viral tweet...'`}</St>,</Line>
+                  <Line>{'  '}<Pr>prediction</Pr>: <St>{`'likely_graduate'`}</St> {'}'}</Line>
+                </code>
+              </pre>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <p className="text-xs font-medium text-gray-900">No API Keys</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">Pay with USDC, not credentials</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <p className="text-xs font-medium text-gray-900">Agent-Native</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">AI agents pay autonomously</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <p className="text-xs font-medium text-gray-900">Instant Settlement</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">Solana USDC, sub-second</p>
+              </div>
             </div>
           </div>
         </motion.section>
