@@ -7,22 +7,26 @@ export async function GET() {
   const hasToken = !!process.env.TURSO_AUTH_TOKEN
 
   if (!tursoUrl) {
-    return NextResponse.json({ error: 'TURSO_DATABASE_URL not set', envKeys: Object.keys(process.env).filter(k => k.startsWith('TURSO')) })
+    return NextResponse.json({ error: 'TURSO_DATABASE_URL not set' })
   }
+
+  // Debug: show exact URL bytes
+  const urlBytes = Array.from(tursoUrl).map(c => c.charCodeAt(0))
+  const trimmedUrl = tursoUrl.trim()
 
   try {
     const { createClient } = await import('@libsql/client')
-    const db = createClient({ url: tursoUrl, authToken: process.env.TURSO_AUTH_TOKEN })
+    const db = createClient({ url: trimmedUrl, authToken: process.env.TURSO_AUTH_TOKEN?.trim() })
     const result = await db.execute('SELECT COUNT(*) as c FROM predictions')
     const count = result.rows[0] as any
-    return NextResponse.json({ ok: true, tursoUrl: tursoUrl.substring(0, 40) + '...', hasToken, count: count?.c, nodeVersion: process.version })
+    return NextResponse.json({ ok: true, count: count?.c, urlLen: tursoUrl.length, trimmedLen: trimmedUrl.length })
   } catch (error: any) {
     return NextResponse.json({
       error: String(error),
-      stack: error?.stack?.split('\n').slice(0, 5),
-      tursoUrl: tursoUrl?.substring(0, 40),
-      hasToken,
-      nodeVersion: process.version
+      urlLen: tursoUrl.length,
+      trimmedLen: trimmedUrl.length,
+      lastChars: urlBytes.slice(-5),
+      firstChars: urlBytes.slice(0, 10),
     })
   }
 }
