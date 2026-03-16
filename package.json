@@ -14,10 +14,11 @@
     "mcp": "tsx packages/mcp/src/index.ts"
   },
   "devDependencies": {
-    "typescript": "^5.4.0",
-    "tsx": "^4.7.0",
+    "@types/better-sqlite3": "^7.6.8",
     "@types/node": "^20.11.0",
-    "@types/better-sqlite3": "^7.6.8"
+    "tsup": "^8.5.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
   },
   "dependencies": {
     "@solana/web3.js": "^1.91.0",

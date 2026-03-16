@@ -5,23 +5,27 @@ import { getOpenPositions, getTotalPnl } from './db'
 import type { Position, GraduationAnalysis } from '../../../lib/types'
 
 export interface RiskConfig {
-  maxPositionSizeSol: number // Max SOL per trade (default: 0.1)
+  maxPositionSizeSol: number // Max SOL per trade (default: 0.25)
   maxTotalExposureSol: number // Max total open positions in SOL (default: 1.0)
   maxOpenPositions: number // Max concurrent positions (default: 5)
   minGraduationScore: number // Min score to enter (default: 70)
-  stopLossPercent: number // Stop loss % (default: -30)
-  takeProfitPercent: number // Take profit % (default: 50)
+  stopLossPercent: number // Fixed stop loss from entry % (default: -30)
+  trailingStopPercent: number // Trailing stop from peak % (default: -15)
+  takeProfitPercent: number // Take profit % (default: 100)
+  graduationPartialExitPercent: number // % of position to sell on graduation (default: 50)
   minSecurityScore: number // Min security score (default: 60)
   cooldownMs: number // Min time between trades (default: 60000)
 }
 
 const DEFAULT_CONFIG: RiskConfig = {
-  maxPositionSizeSol: 0.1,
+  maxPositionSizeSol: 0.25,
   maxTotalExposureSol: 1.0,
   maxOpenPositions: 5,
   minGraduationScore: 70,
   stopLossPercent: -30,
-  takeProfitPercent: 50,
+  trailingStopPercent: -15,
+  takeProfitPercent: 100,
+  graduationPartialExitPercent: 50,
   minSecurityScore: 60,
   cooldownMs: 60000,
 }
@@ -118,49 +122,103 @@ export function evaluateTrade(
     }
   }
 
-  // Calculate position size based on score (higher score = larger position)
-  const scoreMultiplier = analysis.score / 100
-  const positionSize = Math.min(
-    config.maxPositionSizeSol * scoreMultiplier,
-    config.maxTotalExposureSol - totalExposure
-  )
+  // Dynamic position sizing based on AI score tiers
+  // Score 95+  → max position (0.25 SOL) — extremely high conviction
+  // Score 85-94 → medium position (0.10 SOL) — high conviction
+  // Score 75-84 → small position (0.05 SOL) — moderate conviction
+  // Score 70-74 → minimum position (0.03 SOL) — threshold conviction
+  let baseSize: number
+  if (analysis.score >= 95) {
+    baseSize = config.maxPositionSizeSol // 0.25 SOL
+  } else if (analysis.score >= 85) {
+    baseSize = 0.10
+  } else if (analysis.score >= 75) {
+    baseSize = 0.05
+  } else {
+    baseSize = 0.03
+  }
+
+  // Velocity bonus: accelerating tokens get 50% more
+  if (analysis.velocity === 'accelerating') {
+    baseSize *= 1.5
+  }
+
+  // Cap to remaining exposure headroom
+  const positionSize = Math.min(baseSize, config.maxTotalExposureSol - totalExposure)
 
   return {
     shouldTrade: true,
-    reason: `Score ${analysis.score}/100, velocity ${analysis.velocity}, security ${securityScore}/100`,
-    positionSize: Math.round(positionSize * 1000) / 1000, // Round to 3 decimals
+    reason: `Score ${analysis.score}/100 → ${positionSize.toFixed(3)} SOL, velocity ${analysis.velocity}, security ${securityScore}/100`,
+    positionSize: Math.round(positionSize * 1000) / 1000,
   }
+}
+
+export interface ExitDecision {
+  shouldExit: boolean
+  exitType: 'none' | 'stop_loss' | 'trailing_stop' | 'take_profit' | 'graduation_partial'
+  reason: string
+  sellPercent: number // 100 = full exit, 50 = partial
 }
 
 // Check if any open positions need to be closed
 export function checkExitConditions(
   position: Position,
-  currentPrice: number
-): { shouldExit: boolean; reason: string } {
+  currentPrice: number,
+  graduated?: boolean
+): ExitDecision {
   if (!position.entryPrice || currentPrice <= 0) {
-    return { shouldExit: false, reason: 'No price data' }
+    return { shouldExit: false, exitType: 'none', reason: 'No price data', sellPercent: 0 }
   }
 
   const pnlPercent =
     ((currentPrice - position.entryPrice) / position.entryPrice) * 100
 
-  // Stop loss
+  // 1. Fixed stop loss from entry (always active, full exit)
   if (pnlPercent <= config.stopLossPercent) {
     return {
       shouldExit: true,
-      reason: `Stop loss triggered: ${pnlPercent.toFixed(1)}% (threshold: ${config.stopLossPercent}%)`,
+      exitType: 'stop_loss',
+      reason: `Stop loss: ${pnlPercent.toFixed(1)}% (threshold: ${config.stopLossPercent}%)`,
+      sellPercent: 100,
     }
   }
 
-  // Take profit
+  // 2. Trailing stop from peak (only when in profit)
+  const highestPrice = position.highestPrice || position.entryPrice
+  if (currentPrice < highestPrice && highestPrice > position.entryPrice) {
+    const drawdownFromPeak = ((currentPrice - highestPrice) / highestPrice) * 100
+    if (drawdownFromPeak <= config.trailingStopPercent) {
+      const peakPnl = ((highestPrice - position.entryPrice) / position.entryPrice) * 100
+      return {
+        shouldExit: true,
+        exitType: 'trailing_stop',
+        reason: `Trailing stop: ${drawdownFromPeak.toFixed(1)}% from peak (peak was +${peakPnl.toFixed(1)}%, now ${pnlPercent.toFixed(1)}%)`,
+        sellPercent: 100,
+      }
+    }
+  }
+
+  // 3. Take profit (full exit at extreme profit)
   if (pnlPercent >= config.takeProfitPercent) {
     return {
       shouldExit: true,
-      reason: `Take profit triggered: ${pnlPercent.toFixed(1)}% (threshold: ${config.takeProfitPercent}%)`,
+      exitType: 'take_profit',
+      reason: `Take profit: ${pnlPercent.toFixed(1)}% (threshold: ${config.takeProfitPercent}%)`,
+      sellPercent: 100,
     }
   }
 
-  return { shouldExit: false, reason: `PnL: ${pnlPercent.toFixed(1)}%` }
+  // 4. Graduation partial exit (sell 50% when token graduates)
+  if (graduated && !position.partialExitDone) {
+    return {
+      shouldExit: true,
+      exitType: 'graduation_partial',
+      reason: `Graduation detected! Selling ${config.graduationPartialExitPercent}% — let the rest ride`,
+      sellPercent: config.graduationPartialExitPercent,
+    }
+  }
+
+  return { shouldExit: false, exitType: 'none', reason: `PnL: ${pnlPercent.toFixed(1)}%, peak: ${((highestPrice - position.entryPrice) / position.entryPrice * 100).toFixed(1)}%`, sellPercent: 0 }
 }
 
 export function recordTradeTimestamp(): void {

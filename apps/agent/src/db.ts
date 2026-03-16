@@ -47,6 +47,8 @@ function initTables() {
       entry_tx_hash TEXT,
       entry_timestamp INTEGER NOT NULL,
       current_price REAL,
+      highest_price REAL,
+      partial_exit_done INTEGER DEFAULT 0,
       exit_price REAL,
       exit_amount TEXT,
       exit_tx_hash TEXT,
@@ -70,6 +72,14 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_positions_status ON positions(status);
     CREATE INDEX IF NOT EXISTS idx_agent_log_timestamp ON agent_log(timestamp);
   `)
+
+  // Migrate existing positions table — add new columns if missing
+  try {
+    d.exec(`ALTER TABLE positions ADD COLUMN highest_price REAL`)
+  } catch { /* column already exists */ }
+  try {
+    d.exec(`ALTER TABLE positions ADD COLUMN partial_exit_done INTEGER DEFAULT 0`)
+  } catch { /* column already exists */ }
 }
 
 // ── Predictions ──
@@ -137,8 +147,8 @@ function rowToPrediction(row: any): Prediction {
 export function savePosition(position: Position): void {
   const d = getDb()
   d.prepare(`
-    INSERT OR REPLACE INTO positions (id, mint, symbol, entry_price, entry_amount, entry_tx_hash, entry_timestamp, current_price, exit_price, exit_amount, exit_tx_hash, exit_timestamp, realized_pnl, realized_pnl_percent, status, graduation_score, reasoning)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT OR REPLACE INTO positions (id, mint, symbol, entry_price, entry_amount, entry_tx_hash, entry_timestamp, current_price, highest_price, partial_exit_done, exit_price, exit_amount, exit_tx_hash, exit_timestamp, realized_pnl, realized_pnl_percent, status, graduation_score, reasoning)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     position.id,
     position.mint,
@@ -148,6 +158,8 @@ export function savePosition(position: Position): void {
     position.entryTxHash,
     position.entryTimestamp,
     position.currentPrice || null,
+    position.highestPrice || null,
+    position.partialExitDone ? 1 : 0,
     position.exitPrice || null,
     position.exitAmount || null,
     position.exitTxHash || null,
@@ -205,6 +217,8 @@ function rowToPosition(row: any): Position {
     entryTxHash: row.entry_tx_hash,
     entryTimestamp: row.entry_timestamp,
     currentPrice: row.current_price,
+    highestPrice: row.highest_price,
+    partialExitDone: row.partial_exit_done === 1,
     exitPrice: row.exit_price,
     exitAmount: row.exit_amount,
     exitTxHash: row.exit_tx_hash,

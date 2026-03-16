@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Link from 'next/link'
 
 // ─── Types ───
 interface Prediction {
@@ -137,6 +138,13 @@ export default function Dashboard() {
             <Metric label="Win Rate" value={`${pnl.winRate.toFixed(0)}`} unit="%" />
             <Metric label="Trades" value={`${pnl.totalTrades}`} />
             <Metric label="Scanned" value={`${status?.tokensScanned ?? 0}`} />
+
+            <Link
+              href="/developers"
+              className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-900 rounded-md hover:bg-gray-100 transition-all border border-gray-200"
+            >
+              Developers
+            </Link>
 
             <div className="flex items-center gap-1.5 pl-3 border-l border-gray-200">
               <div className={`w-2 h-2 rounded-full ${status?.running ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'}`} />

@@ -89,6 +89,8 @@ export interface Position {
   entryTxHash: string
   entryTimestamp: number
   currentPrice?: number
+  highestPrice?: number // Track peak price for trailing stop
+  partialExitDone?: boolean // Whether 50% graduation sell has been executed
   unrealizedPnl?: number
   unrealizedPnlPercent?: number
   exitPrice?: number

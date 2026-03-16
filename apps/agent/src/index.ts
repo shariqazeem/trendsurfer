@@ -11,7 +11,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
 import { TrendSurferSkill } from '../../../packages/skill/src'
 import { analyzeWithClaude } from './claude'
-import { evaluateTrade, checkExitConditions, recordTradeTimestamp, getRiskConfig, updateRiskConfig, type RiskConfig } from './risk'
+import { evaluateTrade, checkExitConditions, recordTradeTimestamp, getRiskConfig, updateRiskConfig, type RiskConfig, type ExitDecision } from './risk'
 import {
   savePrediction,
   savePosition,
@@ -246,6 +246,8 @@ async function executeBuy(
       entryAmount: positionSizeSol.toString(),
       entryTxHash: trade.txHash,
       entryTimestamp: Date.now(),
+      highestPrice: trade.price,
+      partialExitDone: false,
       status: 'open',
       graduationScore: analysis.score,
       reasoning: analysis.reasoning,
@@ -277,47 +279,107 @@ async function runMonitorCycle(): Promise<void> {
 
   for (const position of openPositions) {
     try {
+      // 1. Get current price
       const tokenInfo = await getTokenInfo(position.mint)
       const data = Array.isArray(tokenInfo?.list) ? tokenInfo.list[0] : tokenInfo
       const currentPrice = parseFloat(data?.price || data?.usdPrice || '0')
 
       if (currentPrice <= 0) continue
 
+      // 2. Update tracking prices
       position.currentPrice = currentPrice
+      position.highestPrice = Math.max(currentPrice, position.highestPrice || position.entryPrice)
+
       const unrealizedPnl = currentPrice - position.entryPrice
       const unrealizedPnlPercent =
         ((currentPrice - position.entryPrice) / position.entryPrice) * 100
-
       position.unrealizedPnl = unrealizedPnl
       position.unrealizedPnlPercent = unrealizedPnlPercent
 
-      const { shouldExit, reason } = checkExitConditions(position, currentPrice)
+      // 3. Check if token has graduated (bonding curve filled)
+      let graduated = false
+      try {
+        const launches = await skill.refreshLaunches()
+        const thisToken = launches.find(l => l.mint === position.mint)
+        graduated = thisToken?.graduated || false
+      } catch {
+        // Graduation check might fail — not critical
+      }
 
-      if (shouldExit) {
-        console.log(`\nEXIT: ${position.symbol} | ${reason} | PnL: ${unrealizedPnlPercent.toFixed(1)}%`)
-        logAgent('trade', `Exit signal for ${position.symbol}`, { reason, pnlPercent: unrealizedPnlPercent })
+      // 4. Evaluate exit conditions (trailing stop, graduation partial, etc.)
+      const decision: ExitDecision = checkExitConditions(position, currentPrice, graduated)
 
-        if (!paperMode) {
-          try {
-            const walletAddress = getWalletAddress()
-            await skill.executeTrade({
-              tokenMint: position.mint,
-              side: 'sell',
-              amountToken: position.entryAmount,
-              walletAddress,
-              gasless: true,
-              signTransaction: signBitgetOrder,
-            })
-          } catch (error) {
-            console.error(`  Sell failed:`, error)
+      if (decision.shouldExit) {
+        const isPartial = decision.sellPercent < 100
+
+        if (isPartial) {
+          // ── Partial Exit (e.g., 50% on graduation) ──
+          console.log(`\nPARTIAL EXIT: ${position.symbol} | ${decision.reason}`)
+          logAgent('trade', `Partial exit for ${position.symbol}`, {
+            exitType: decision.exitType,
+            reason: decision.reason,
+            sellPercent: decision.sellPercent,
+            pnlPercent: unrealizedPnlPercent,
+          })
+
+          if (!paperMode) {
+            try {
+              const walletAddress = getWalletAddress()
+              const sellAmount = (parseFloat(position.entryAmount) * decision.sellPercent / 100).toFixed(6)
+              await skill.executeTrade({
+                tokenMint: position.mint,
+                side: 'sell',
+                amountToken: sellAmount,
+                walletAddress,
+                gasless: true,
+                signTransaction: signBitgetOrder,
+              })
+            } catch (error) {
+              console.error(`  Partial sell failed:`, error)
+            }
+          } else {
+            console.log(`  PAPER PARTIAL SELL: ${decision.sellPercent}% of ${position.symbol}`)
           }
-        }
 
-        position.exitPrice = currentPrice
-        position.exitTimestamp = Date.now()
-        position.realizedPnl = unrealizedPnl
-        position.realizedPnlPercent = unrealizedPnlPercent
-        position.status = 'closed'
+          // Update position — reduce entry amount, mark partial exit done
+          const remainingAmount = (parseFloat(position.entryAmount) * (100 - decision.sellPercent) / 100).toFixed(6)
+          position.entryAmount = remainingAmount
+          position.partialExitDone = true
+          // Position stays OPEN — let the remaining ride with trailing stop
+
+        } else {
+          // ── Full Exit (stop loss, trailing stop, take profit) ──
+          console.log(`\nEXIT: ${position.symbol} | ${decision.reason} | PnL: ${unrealizedPnlPercent.toFixed(1)}%`)
+          logAgent('trade', `Exit ${position.symbol}`, {
+            exitType: decision.exitType,
+            reason: decision.reason,
+            pnlPercent: unrealizedPnlPercent,
+          })
+
+          if (!paperMode) {
+            try {
+              const walletAddress = getWalletAddress()
+              await skill.executeTrade({
+                tokenMint: position.mint,
+                side: 'sell',
+                amountToken: position.entryAmount,
+                walletAddress,
+                gasless: true,
+                signTransaction: signBitgetOrder,
+              })
+            } catch (error) {
+              console.error(`  Sell failed:`, error)
+            }
+          } else {
+            console.log(`  PAPER SELL: 100% of ${position.symbol} (${decision.exitType})`)
+          }
+
+          position.exitPrice = currentPrice
+          position.exitTimestamp = Date.now()
+          position.realizedPnl = unrealizedPnl
+          position.realizedPnlPercent = unrealizedPnlPercent
+          position.status = 'closed'
+        }
       }
 
       savePosition(position)
