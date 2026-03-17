@@ -11,7 +11,7 @@ const NETWORK = 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp' // Solana mainnet
 const FACILITATOR_URL = 'https://x402.org/facilitator'
 
 function getPayTo(): string {
-  return process.env.X402_PAY_TO || process.env.SOLANA_WALLET_ADDRESS || ''
+  return (process.env.X402_PAY_TO?.trim() || process.env.SOLANA_WALLET_ADDRESS?.trim() || '')
 }
 
 // ── Database ─────────────────────────────────────────────────────────────────────
