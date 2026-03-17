@@ -1,115 +1,73 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Navigation flow', () => {
-  // ──────────────────────────────────────────────────────────────────────────
-  // Cross-page Navigation
-  // ──────────────────────────────────────────────────────────────────────────
-
   test('can navigate from / to /developers and back', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 })
-
-    // Start at dashboard
     await page.goto('/')
-    await page.waitForSelector('header')
+    await page.waitForFunction(
+      () => !document.querySelector('[class*="animate-spin"]'),
+      { timeout: 15_000 }
+    ).catch(() => {})
 
-    // Verify we are on the dashboard — Scanner tab should be visible
-    await expect(page.locator('header nav button', { hasText: 'Scanner' })).toBeVisible()
+    // Find Developers link and click it
+    const devLink = page.getByRole('link', { name: 'Developers' }).first()
+    await expect(devLink).toBeVisible()
+    await devLink.click()
 
-    // Navigate to /developers via the nav link
-    await page.locator('header').getByRole('link', { name: 'Developers' }).click()
     await page.waitForURL('**/developers')
     expect(page.url()).toContain('/developers')
 
-    // Verify developers page loaded
-    await expect(page.getByRole('heading', { name: /Intelligence Layer/ })).toBeVisible()
-
-    // Navigate back to dashboard via the "Dashboard" link in the developers nav
-    await page.locator('header nav').getByRole('link', { name: 'Dashboard' }).click()
-    await page.waitForURL(url => !url.toString().includes('/developers'))
-
-    // Verify dashboard loaded
-    await expect(page.locator('header nav button', { hasText: 'Scanner' })).toBeVisible()
+    // Navigate back to dashboard
+    const dashLink = page.getByRole('link', { name: 'Dashboard' }).or(
+      page.getByRole('link', { name: 'TrendSurfer' })
+    )
+    await dashLink.first().click()
+    await page.waitForURL(/\/$/)
+    expect(page.url()).not.toContain('/developers')
   })
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Tab Switching Preserves Data
-  // ──────────────────────────────────────────────────────────────────────────
-
-  test('tab switching preserves data (Scanner to Trades and back)', async ({ page }) => {
+  test('scroll sections are present on main page', async ({ page }) => {
     await page.goto('/')
-    await page.waitForSelector('header')
+    await page.waitForFunction(
+      () => !document.querySelector('[class*="animate-spin"]'),
+      { timeout: 15_000 }
+    ).catch(() => {})
 
-    // Wait for initial load to complete
-    await page.waitForFunction(() => {
-      return !document.querySelector('[class*="animate-pulse"]')
-    }, { timeout: 15_000 }).catch(() => {})
-
-    // We are on Scanner view — note the filter pill states
-    const allPill = page.getByRole('button', { name: /^All/ })
-
-    // Check if the All pill is visible (Scanner view is loaded)
-    const scannerLoaded = await allPill.isVisible().catch(() => false)
-    if (!scannerLoaded) {
-      // Loading might still be showing — wait a bit more
-      await page.waitForTimeout(2_000)
-    }
-
-    // Switch to Trades
-    await page.locator('header nav button', { hasText: 'Trades' }).click()
-    await expect(page.getByText('Strategy:', { exact: false })).toBeVisible({ timeout: 5_000 })
-
-    // Switch back to Scanner
-    await page.locator('header nav button', { hasText: 'Scanner' }).click()
-
-    // Filter pills should be visible again — data is preserved
-    await expect(page.getByRole('button', { name: /^All/ })).toBeVisible({ timeout: 5_000 })
+    // All major sections should exist
+    await expect(page.getByText('How It Works')).toBeVisible()
+    await expect(page.getByText('Live Scanner')).toBeVisible()
+    await expect(page.getByText('Recent Predictions')).toBeVisible()
+    await expect(page.getByText('Trading Performance')).toBeVisible()
+    await expect(page.getByText('Use TrendSurfer in Your Agent')).toBeVisible()
+    await expect(page.getByText('Agent Log')).toBeVisible()
   })
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // URL Does Not Change on Tab Switch
-  // ──────────────────────────────────────────────────────────────────────────
-
-  test('URL does not change when switching tabs (client-side state)', async ({ page }) => {
+  test('"View Scanner" CTA scrolls to scanner section', async ({ page }) => {
     await page.goto('/')
-    await page.waitForSelector('header')
-    const initialUrl = page.url()
+    await page.waitForFunction(
+      () => !document.querySelector('[class*="animate-spin"]'),
+      { timeout: 15_000 }
+    ).catch(() => {})
 
-    // Switch to Trades
-    await page.locator('header nav button', { hasText: 'Trades' }).click()
-    await page.waitForTimeout(500)
-    expect(page.url()).toBe(initialUrl)
+    const viewScanner = page.getByRole('link', { name: /View Scanner/ })
+    await viewScanner.click()
 
-    // Switch to Log
-    await page.locator('header nav button', { hasText: 'Log' }).click()
-    await page.waitForTimeout(500)
-    expect(page.url()).toBe(initialUrl)
-
-    // Switch back to Scanner
-    await page.locator('header nav button', { hasText: 'Scanner' }).click()
-    await page.waitForTimeout(500)
-    expect(page.url()).toBe(initialUrl)
+    const scanner = page.locator('#scanner')
+    await expect(scanner).toBeVisible()
   })
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // Browser Back Button
-  // ──────────────────────────────────────────────────────────────────────────
 
   test('browser back button works after navigating to /developers', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 })
-
-    // Start at dashboard
     await page.goto('/')
-    await page.waitForSelector('header')
+    await page.waitForFunction(
+      () => !document.querySelector('[class*="animate-spin"]'),
+      { timeout: 15_000 }
+    ).catch(() => {})
 
-    // Navigate to /developers
-    await page.locator('header').getByRole('link', { name: 'Developers' }).click()
+    const devLink = page.getByRole('link', { name: 'Developers' }).first()
+    await devLink.click()
     await page.waitForURL('**/developers')
 
-    // Go back with browser back button
     await page.goBack()
-    await page.waitForURL(url => !url.toString().includes('/developers'))
-
-    // Should be back on dashboard
-    await expect(page.locator('header nav button', { hasText: 'Scanner' })).toBeVisible()
+    await page.waitForURL(/\/$/)
+    expect(page.url()).not.toContain('/developers')
   })
 })

@@ -173,9 +173,8 @@ test.describe('Developers — SDK/MCP documentation page', () => {
     await dashboardLink.click()
     await page.waitForURL('**/')
 
-    // Should be back on the main dashboard
-    const scannerTab = page.locator('header nav button', { hasText: 'Scanner' })
-    await expect(scannerTab).toBeVisible()
+    // Should be back on the main dashboard (scroll-based layout with hero)
+    await expect(page.getByRole('heading', { name: /Intelligence Skill/ })).toBeVisible()
   })
 
   // ──────────────────────────────────────────────────────────────────────────

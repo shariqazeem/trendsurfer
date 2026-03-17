@@ -16,6 +16,7 @@ export async function GET() {
     const db = getDbClient()
 
     const posResult = await db.execute('SELECT * FROM positions ORDER BY entry_timestamp DESC LIMIT 100')
+    console.log('Trades API: posResult.rows.length =', posResult.rows.length)
 
     const positions = posResult.rows.map((row: any) => ({
       id: row.id,
@@ -51,10 +52,12 @@ export async function GET() {
         winRate: pnl?.totalTrades > 0 ? (pnl.wins / pnl.totalTrades) * 100 : 0,
       },
     })
-  } catch {
+  } catch (error) {
+    console.error('Trades API error:', error)
     return NextResponse.json({
       positions: [],
       pnl: { totalPnl: 0, totalTrades: 0, winRate: 0 },
+      error: String(error),
     })
   }
 }

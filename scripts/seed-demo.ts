@@ -1,14 +1,31 @@
-// ── Seed Demo Data ──
-// Inserts realistic demo data into the TrendSurfer SQLite database.
+// ── Seed Demo Data (Turso Remote) ──
+// Populates the remote Turso cloud database with realistic demo data
+// so the dashboard is never empty.
+//
 // Run with: npx tsx scripts/seed-demo.ts
 
-import Database from 'better-sqlite3'
+import { createClient } from '@libsql/client'
 import crypto from 'crypto'
+import dotenv from 'dotenv'
 import path from 'path'
 
-const DB_PATH = path.join(process.cwd(), 'data', 'trendsurfer.db')
-const db = new Database(DB_PATH)
-db.pragma('journal_mode = WAL')
+// Load env vars from .env.local
+dotenv.config({ path: path.join(process.cwd(), '.env.local') })
+
+const tursoUrl = process.env.TURSO_DATABASE_URL?.trim()
+const tursoToken = process.env.TURSO_AUTH_TOKEN?.trim()
+
+if (!tursoUrl || !tursoToken) {
+  console.error('ERROR: TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be set in .env.local')
+  process.exit(1)
+}
+
+console.log(`Connecting to Turso: ${tursoUrl}`)
+
+const db = createClient({
+  url: tursoUrl,
+  authToken: tursoToken,
+})
 
 // ── Helpers ──
 
@@ -53,62 +70,67 @@ function makeTxHash(): string {
 
 // ── Ensure tables exist ──
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS predictions (
-    id TEXT PRIMARY KEY,
-    mint TEXT NOT NULL,
-    symbol TEXT,
-    name TEXT,
-    score INTEGER NOT NULL,
-    curve_progress REAL NOT NULL,
-    velocity TEXT,
-    reasoning TEXT,
-    prediction TEXT NOT NULL,
-    created_at INTEGER NOT NULL,
-    resolved_at INTEGER,
-    outcome TEXT DEFAULT 'pending',
-    traded INTEGER DEFAULT 0
-  );
+async function initTables(): Promise<void> {
+  await db.executeMultiple(`
+    CREATE TABLE IF NOT EXISTS predictions (
+      id TEXT PRIMARY KEY,
+      mint TEXT NOT NULL,
+      symbol TEXT,
+      name TEXT,
+      score INTEGER NOT NULL,
+      curve_progress REAL NOT NULL,
+      velocity TEXT,
+      reasoning TEXT,
+      prediction TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      resolved_at INTEGER,
+      outcome TEXT DEFAULT 'pending',
+      traded INTEGER DEFAULT 0
+    );
 
-  CREATE TABLE IF NOT EXISTS positions (
-    id TEXT PRIMARY KEY,
-    mint TEXT NOT NULL,
-    symbol TEXT,
-    entry_price REAL NOT NULL,
-    entry_amount TEXT NOT NULL,
-    entry_tx_hash TEXT,
-    entry_timestamp INTEGER NOT NULL,
-    current_price REAL,
-    exit_price REAL,
-    exit_amount TEXT,
-    exit_tx_hash TEXT,
-    exit_timestamp INTEGER,
-    realized_pnl REAL,
-    realized_pnl_percent REAL,
-    status TEXT NOT NULL DEFAULT 'open',
-    graduation_score INTEGER,
-    reasoning TEXT
-  );
+    CREATE TABLE IF NOT EXISTS positions (
+      id TEXT PRIMARY KEY,
+      mint TEXT NOT NULL,
+      symbol TEXT,
+      entry_price REAL NOT NULL,
+      entry_amount TEXT NOT NULL,
+      entry_tx_hash TEXT,
+      entry_timestamp INTEGER NOT NULL,
+      current_price REAL,
+      highest_price REAL,
+      partial_exit_done INTEGER DEFAULT 0,
+      exit_price REAL,
+      exit_amount TEXT,
+      exit_tx_hash TEXT,
+      exit_timestamp INTEGER,
+      realized_pnl REAL,
+      realized_pnl_percent REAL,
+      status TEXT NOT NULL DEFAULT 'open',
+      graduation_score INTEGER,
+      reasoning TEXT
+    );
 
-  CREATE TABLE IF NOT EXISTS agent_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp INTEGER NOT NULL,
-    level TEXT NOT NULL,
-    message TEXT NOT NULL,
-    data TEXT
-  );
+    CREATE TABLE IF NOT EXISTS agent_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp INTEGER NOT NULL,
+      level TEXT NOT NULL,
+      message TEXT NOT NULL,
+      data TEXT
+    );
 
-  CREATE INDEX IF NOT EXISTS idx_predictions_mint ON predictions(mint);
-  CREATE INDEX IF NOT EXISTS idx_positions_status ON positions(status);
-  CREATE INDEX IF NOT EXISTS idx_agent_log_timestamp ON agent_log(timestamp);
-`)
+    CREATE INDEX IF NOT EXISTS idx_predictions_mint ON predictions(mint);
+    CREATE INDEX IF NOT EXISTS idx_positions_status ON positions(status);
+    CREATE INDEX IF NOT EXISTS idx_agent_log_timestamp ON agent_log(timestamp);
+  `)
 
-// ── Clear existing data ──
-
-console.log('Clearing existing data...')
-db.exec('DELETE FROM predictions')
-db.exec('DELETE FROM positions')
-db.exec('DELETE FROM agent_log')
+  // Migrate existing positions table — add new columns if missing
+  try {
+    await db.execute('ALTER TABLE positions ADD COLUMN highest_price REAL')
+  } catch { /* column already exists */ }
+  try {
+    await db.execute('ALTER TABLE positions ADD COLUMN partial_exit_done INTEGER DEFAULT 0')
+  } catch { /* column already exists */ }
+}
 
 // ── Token definitions ──
 
@@ -124,21 +146,21 @@ const tokens: TokenDef[] = [
   { name: 'Vitalik on Solana Speed', symbol: 'VITSOL', mint: makeMint('pump'), category: 'winner_high' },
   { name: "Anatoly's DeFi Thread", symbol: 'ANATH', mint: makeMint('moon'), category: 'winner_high' },
   { name: 'Jupiter Airdrop Leak', symbol: 'JUPSZ', mint: makeMint('pump'), category: 'winner_high' },
-  { name: 'AI Agents Are Taking Over', symbol: 'AIAGO', mint: makeMint(), category: 'winner_high' },
-  { name: 'Solana TPS Record', symbol: 'TPSOL', mint: makeMint('pump'), category: 'winner_high' },
-  { name: 'Bonk Dog Rescue', symbol: 'BONKD', mint: makeMint(), category: 'winner_high' },
+  { name: 'AI Agents Taking Over', symbol: 'AIAGN', mint: makeMint(), category: 'winner_high' },
+  { name: 'Solana TPS Record', symbol: 'STPS', mint: makeMint('pump'), category: 'winner_high' },
+  { name: 'Bonk 2.0 Launch', symbol: 'BONK2', mint: makeMint(), category: 'winner_high' },
   { name: 'Firedancer Goes Live', symbol: 'FRDNC', mint: makeMint('moon'), category: 'winner_high' },
   { name: 'Mad Lads Floor Pump', symbol: 'MADLP', mint: makeMint(), category: 'winner_high' },
 
   // 5 winners: moderate score, steady, graduated
   { name: 'Meme Coin Philosophy', symbol: 'MEMPH', mint: makeMint(), category: 'winner_steady' },
-  { name: 'ETH Bridge Drama', symbol: 'ETHBR', mint: makeMint('pump'), category: 'winner_steady' },
-  { name: 'Raydium AMM Exploit', symbol: 'RAYEX', mint: makeMint(), category: 'winner_steady' },
+  { name: 'SOL to $500 Thread', symbol: 'SOL500', mint: makeMint('pump'), category: 'winner_steady' },
+  { name: 'Raydium AMM v3 Reveal', symbol: 'RAYV3', mint: makeMint(), category: 'winner_steady' },
   { name: 'Wormhole V2 Launch', symbol: 'WRMV2', mint: makeMint(), category: 'winner_steady' },
   { name: 'Marinade Staking Meta', symbol: 'MRSTK', mint: makeMint('moon'), category: 'winner_steady' },
 
   // 4 watching: mid score, steady, not graduated
-  { name: 'Phantom Wallet Hacked', symbol: 'PHACK', mint: makeMint(), category: 'watching' },
+  { name: 'Phantom Wallet Update', symbol: 'PHNTM', mint: makeMint(), category: 'watching' },
   { name: 'Orca Whirlpool Yield', symbol: 'ORCWP', mint: makeMint(), category: 'watching' },
   { name: 'Tensor NFT Revival', symbol: 'TNSOR', mint: makeMint('pump'), category: 'watching' },
   { name: 'Helium Mobile Signal', symbol: 'HNTMO', mint: makeMint(), category: 'watching' },
@@ -146,7 +168,7 @@ const tokens: TokenDef[] = [
   // 5 unlikely: low score, declining, not graduated
   { name: 'Rug Pull Confession', symbol: 'RUGCF', mint: makeMint(), category: 'unlikely' },
   { name: 'SBF Appeals Again', symbol: 'SBFAP', mint: makeMint(), category: 'unlikely' },
-  { name: 'Solana Down Again', symbol: 'SLDWN', mint: makeMint(), category: 'unlikely' },
+  { name: 'Solana Down Again?', symbol: 'SLDWN', mint: makeMint(), category: 'unlikely' },
   { name: 'Copy Trading Exposed', symbol: 'CPYTD', mint: makeMint(), category: 'unlikely' },
   { name: 'Crypto Twitter Cringe', symbol: 'CTCRG', mint: makeMint(), category: 'unlikely' },
 
@@ -198,8 +220,6 @@ const reasonings: Record<string, string[]> = {
 
 // ── Build predictions ──
 
-console.log('Inserting 25 predictions...')
-
 interface PredictionRow {
   id: string
   mint: string
@@ -217,14 +237,6 @@ interface PredictionRow {
 }
 
 const predictionRows: PredictionRow[] = []
-
-const insertPrediction = db.prepare(`
-  INSERT INTO predictions (id, mint, symbol, name, score, curve_progress, velocity, reasoning, prediction, created_at, resolved_at, outcome, traded)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`)
-
-// Track which tokens get traded (for linking positions)
-const tradedTokens: { mint: string; symbol: string; createdAt: number; score: number; entryPrice: number }[] = []
 
 for (let i = 0; i < tokens.length; i++) {
   const t = tokens[i]
@@ -299,7 +311,7 @@ for (let i = 0; i < tokens.length; i++) {
     .replace('{curve}', curveProgress.toFixed(1))
     .replace(/{vel}/g, velNum.toFixed(1))
 
-  const row: PredictionRow = {
+  predictionRows.push({
     id: crypto.randomUUID(),
     mint: t.mint,
     symbol: t.symbol,
@@ -313,45 +325,22 @@ for (let i = 0; i < tokens.length; i++) {
     resolved_at: resolvedAt,
     outcome,
     traded: 0,
-  }
-
-  predictionRows.push(row)
+  })
 }
 
 // Mark certain tokens as traded (the ones we'll create positions for)
-// Pick 6 from winners, 2 from winners (for losses), 2 from pending (for open)
-const winnerIndices = [0, 1, 2, 3, 5, 7]  // 6 winning trades from winner_high
-const loserIndices = [8, 9]                 // 2 losing trades from winner_steady
+// 6 winning from winner_high, 2 losing from winner_steady, 2 open from pending
+const winnerIndices = [0, 1, 2, 3, 5, 7]  // 6 winning closed trades
+const loserIndices = [8, 9]                 // 2 losing closed trades
 const openIndices = [22, 23]                // 2 open positions from pending
 
 const allTradedIndices = [...winnerIndices, ...loserIndices, ...openIndices]
-
 for (const idx of allTradedIndices) {
   predictionRows[idx].traded = 1
 }
 
-// Insert all predictions
-const insertPredictions = db.transaction(() => {
-  for (const row of predictionRows) {
-    insertPrediction.run(
-      row.id, row.mint, row.symbol, row.name, row.score,
-      row.curve_progress, row.velocity, row.reasoning, row.prediction,
-      row.created_at, row.resolved_at, row.outcome, row.traded
-    )
-  }
-})
-insertPredictions()
+// ── Position definitions ──
 
-// ── Build positions ──
-
-console.log('Inserting 10 positions...')
-
-const insertPosition = db.prepare(`
-  INSERT INTO positions (id, mint, symbol, entry_price, entry_amount, entry_tx_hash, entry_timestamp, current_price, exit_price, exit_amount, exit_tx_hash, exit_timestamp, realized_pnl, realized_pnl_percent, status, graduation_score, reasoning)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`)
-
-// 6 closed winning trades
 const winningTrades = [
   { idx: 0, entryPrice: 0.0000032, exitPriceMult: 1.45, amount: '0.08', pnlPct: 45.2 },
   { idx: 1, entryPrice: 0.0000078, exitPriceMult: 1.82, amount: '0.06', pnlPct: 82.1 },
@@ -384,232 +373,8 @@ const positionReasonings = [
   'Strong Breakpoint narrative play. Curve filling fast with institutional-style accumulation. Positioned for graduation within next 3 hours.',
 ]
 
-const insertPositions = db.transaction(() => {
-  // Winning closed trades
-  for (let i = 0; i < winningTrades.length; i++) {
-    const wt = winningTrades[i]
-    const pred = predictionRows[wt.idx]
-    const entryTs = minsAfter(pred.created_at, randInt(2, 8))
-    const exitTs = minsAfter(entryTs, randInt(30, 180))
-    const exitPrice = parseFloat((wt.entryPrice * wt.exitPriceMult).toFixed(10))
-    const entryAmountNum = parseFloat(wt.amount)
-    const realizedPnl = parseFloat((entryAmountNum * (wt.pnlPct / 100)).toFixed(4))
+// ── Agent log message data ──
 
-    insertPosition.run(
-      crypto.randomUUID(),
-      pred.mint,
-      pred.symbol,
-      wt.entryPrice,
-      wt.amount,
-      makeTxHash(),
-      entryTs,
-      null,           // current_price (null for closed)
-      exitPrice,
-      (entryAmountNum * wt.exitPriceMult).toFixed(4),
-      makeTxHash(),
-      exitTs,
-      realizedPnl,
-      wt.pnlPct,
-      'closed',
-      pred.score,
-      positionReasonings[i]
-    )
-  }
-
-  // Losing closed trades
-  for (let i = 0; i < losingTrades.length; i++) {
-    const lt = losingTrades[i]
-    const pred = predictionRows[lt.idx]
-    const entryTs = minsAfter(pred.created_at, randInt(3, 10))
-    const exitTs = minsAfter(entryTs, randInt(30, 120))
-    const exitPrice = parseFloat((lt.entryPrice * lt.exitPriceMult).toFixed(10))
-    const entryAmountNum = parseFloat(lt.amount)
-    const realizedPnl = parseFloat((entryAmountNum * (lt.pnlPct / 100)).toFixed(4))
-
-    insertPosition.run(
-      crypto.randomUUID(),
-      pred.mint,
-      pred.symbol,
-      lt.entryPrice,
-      lt.amount,
-      makeTxHash(),
-      entryTs,
-      null,
-      exitPrice,
-      (entryAmountNum * lt.exitPriceMult).toFixed(4),
-      makeTxHash(),
-      exitTs,
-      realizedPnl,
-      lt.pnlPct,
-      'closed',
-      pred.score,
-      positionReasonings[6 + i]
-    )
-  }
-
-  // Open positions
-  for (let i = 0; i < openTrades.length; i++) {
-    const ot = openTrades[i]
-    const pred = predictionRows[ot.idx]
-    const entryTs = minsAfter(pred.created_at, randInt(2, 5))
-    const currentPrice = parseFloat((ot.entryPrice * ot.currentPriceMult).toFixed(10))
-
-    insertPosition.run(
-      crypto.randomUUID(),
-      pred.mint,
-      pred.symbol,
-      ot.entryPrice,
-      ot.amount,
-      makeTxHash(),
-      entryTs,
-      currentPrice,   // current_price for open positions
-      null,            // no exit_price
-      null,            // no exit_amount
-      null,            // no exit_tx_hash
-      null,            // no exit_timestamp
-      null,            // no realized_pnl
-      null,            // no realized_pnl_percent
-      'open',
-      pred.score,
-      positionReasonings[8 + i]
-    )
-  }
-})
-insertPositions()
-
-// ── Build agent logs ──
-
-console.log('Inserting 120 agent logs...')
-
-const insertLog = db.prepare(`
-  INSERT INTO agent_log (timestamp, level, message, data) VALUES (?, ?, ?, ?)
-`)
-
-// Generate 120 log entries spread across last 48 hours
-interface LogEntry {
-  timestamp: number
-  level: string
-  message: string
-  data: string | null
-}
-
-const logEntries: LogEntry[] = []
-
-// Agent start events
-logEntries.push({ timestamp: hoursAgo(47.5), level: 'info', message: 'Agent started — TrendSurfer v0.1.0 initializing...', data: JSON.stringify({ version: '0.1.0', mode: 'autonomous' }) })
-logEntries.push({ timestamp: hoursAgo(24), level: 'info', message: 'Agent restarted after scheduled maintenance', data: null })
-
-// Scan cycle logs (spread throughout)
-const scanTimes = Array.from({ length: 30 }, (_, i) => hoursAgo(47 - i * 1.5))
-for (const ts of scanTimes) {
-  logEntries.push({ timestamp: ts, level: 'info', message: 'Scanning for new launches...', data: null })
-  const found = randInt(0, 5)
-  if (found > 0) {
-    logEntries.push({
-      timestamp: ts + 2000,
-      level: 'info',
-      message: `Found ${found} new launch${found > 1 ? 'es' : ''} on trends.fun`,
-      data: JSON.stringify({ count: found, source: 'meteora_dbc' })
-    })
-  }
-  logEntries.push({
-    timestamp: ts + 5000,
-    level: 'info',
-    message: `Analyzing ${randInt(3, 8)} active tokens...`,
-    data: null
-  })
-  logEntries.push({ timestamp: ts + 12000, level: 'info', message: 'Scan cycle complete', data: JSON.stringify({ duration_ms: randInt(8000, 15000) }) })
-}
-
-// Token-specific curve progress logs
-for (const pred of predictionRows) {
-  logEntries.push({
-    timestamp: minsAfter(pred.created_at, randInt(1, 5)),
-    level: 'info',
-    message: `Token $${pred.symbol} curve at ${pred.curve_progress.toFixed(1)}% — velocity ${pred.velocity}`,
-    data: JSON.stringify({ mint: pred.mint, curve: pred.curve_progress, velocity: pred.velocity })
-  })
-}
-
-// Trade execution logs (for traded tokens)
-for (const wt of winningTrades) {
-  const pred = predictionRows[wt.idx]
-  const buyTs = minsAfter(pred.created_at, randInt(2, 8))
-  logEntries.push({
-    timestamp: buyTs,
-    level: 'trade',
-    message: `BUY executed: ${wt.amount} SOL of $${pred.symbol} at ${wt.entryPrice.toFixed(7)}`,
-    data: JSON.stringify({ mint: pred.mint, amount: wt.amount, price: wt.entryPrice, score: pred.score, action: 'buy' })
-  })
-  const sellTs = minsAfter(buyTs, randInt(30, 180))
-  const exitPrice = (wt.entryPrice * wt.exitPriceMult).toFixed(7)
-  logEntries.push({
-    timestamp: sellTs,
-    level: 'trade',
-    message: `SELL executed: $${pred.symbol} graduated, +${wt.pnlPct.toFixed(1)}% profit`,
-    data: JSON.stringify({ mint: pred.mint, exit_price: parseFloat(exitPrice), pnl_percent: wt.pnlPct, action: 'sell', reason: 'graduation' })
-  })
-}
-
-for (const lt of losingTrades) {
-  const pred = predictionRows[lt.idx]
-  const buyTs = minsAfter(pred.created_at, randInt(3, 10))
-  logEntries.push({
-    timestamp: buyTs,
-    level: 'trade',
-    message: `BUY executed: ${lt.amount} SOL of $${pred.symbol} at ${lt.entryPrice.toFixed(7)}`,
-    data: JSON.stringify({ mint: pred.mint, amount: lt.amount, price: lt.entryPrice, score: pred.score, action: 'buy' })
-  })
-  const sellTs = minsAfter(buyTs, randInt(30, 120))
-  logEntries.push({
-    timestamp: sellTs,
-    level: 'trade',
-    message: `Position closed: $${pred.symbol} stop-loss at ${lt.pnlPct.toFixed(1)}%`,
-    data: JSON.stringify({ mint: pred.mint, pnl_percent: lt.pnlPct, action: 'sell', reason: 'stop_loss' })
-  })
-}
-
-for (const ot of openTrades) {
-  const pred = predictionRows[ot.idx]
-  const buyTs = minsAfter(pred.created_at, randInt(2, 5))
-  logEntries.push({
-    timestamp: buyTs,
-    level: 'trade',
-    message: `BUY executed: ${ot.amount} SOL of $${pred.symbol} at ${ot.entryPrice.toFixed(7)}`,
-    data: JSON.stringify({ mint: pred.mint, amount: ot.amount, price: ot.entryPrice, score: pred.score, action: 'buy' })
-  })
-}
-
-// Warning logs
-const warningTokens = predictionRows.filter(p => p.outcome === 'not_graduated')
-for (const wt of warningTokens.slice(0, 5)) {
-  logEntries.push({
-    timestamp: minsAfter(wt.created_at, randInt(15, 60)),
-    level: 'warn',
-    message: `Token $${wt.symbol} velocity declining, monitoring...`,
-    data: JSON.stringify({ mint: wt.mint, velocity: wt.velocity, curve: wt.curve_progress })
-  })
-}
-logEntries.push({
-  timestamp: hoursAgo(18),
-  level: 'warn',
-  message: `High holder concentration detected for $${predictionRows[12].symbol} — top wallet holds 15%`,
-  data: JSON.stringify({ mint: predictionRows[12].mint, top_holder_pct: 15.2 })
-})
-logEntries.push({
-  timestamp: hoursAgo(31),
-  level: 'warn',
-  message: `Security flag: $${predictionRows[15].symbol} has suspicious transfer fee logic`,
-  data: JSON.stringify({ mint: predictionRows[15].mint, flag: 'transfer_fee_anomaly' })
-})
-logEntries.push({
-  timestamp: hoursAgo(8),
-  level: 'warn',
-  message: 'RPC rate limit approaching — throttling scan frequency to 1/min',
-  data: JSON.stringify({ rpc_calls_last_hour: 892, limit: 1000 })
-})
-
-// Additional info logs to reach ~120
 const fillerInfoMessages = [
   'Bonding curve state refreshed for 12 tracked tokens',
   'Security audit batch complete — 0 honeypots detected in current scan',
@@ -620,7 +385,7 @@ const fillerInfoMessages = [
   'Risk manager: total exposure 0.14 SOL (below 0.5 SOL limit)',
   'Claude analysis pipeline: 25 tokens analyzed in last 24 hours',
   'Graduation event detected: $JUPSZ migrated to Raydium DEX',
-  'Graduation event detected: $AIAGO migrated to Orca Whirlpool',
+  'Graduation event detected: $AIAGN migrated to Orca Whirlpool',
   'New token detected: checking Meteora DBC pool state...',
   'Dev wallet analysis complete for 3 new tokens',
   'Historical graduation data updated: 62% avg graduation rate for trending tweets',
@@ -628,55 +393,342 @@ const fillerInfoMessages = [
   'Position manager: recalculated unrealized PnL for 2 open positions',
 ]
 
-for (let i = 0; i < fillerInfoMessages.length; i++) {
-  logEntries.push({
-    timestamp: hoursAgo(randFloat(0.5, 46, 1)),
-    level: 'info',
-    message: fillerInfoMessages[i],
-    data: null
-  })
-}
+// ── Main async function ──
 
-// Sort all logs by timestamp
-logEntries.sort((a, b) => a.timestamp - b.timestamp)
+async function seed(): Promise<void> {
+  console.log('Initializing tables...')
+  await initTables()
 
-// Trim to exactly 120 if we have more, or we're fine if close
-const finalLogs = logEntries.slice(0, 120)
+  // ── Clear existing data ──
+  console.log('Clearing existing data...')
+  await db.execute('DELETE FROM predictions')
+  await db.execute('DELETE FROM positions')
+  await db.execute('DELETE FROM agent_log')
 
-// If we have fewer than 120, pad with scan cycle messages
-while (finalLogs.length < 120) {
-  const ts = hoursAgo(randFloat(1, 46, 1))
-  finalLogs.push({
-    timestamp: ts,
-    level: 'info',
-    message: `Scan cycle #${randInt(100, 999)} — ${randInt(2, 7)} tokens monitored`,
-    data: JSON.stringify({ cycle: randInt(100, 999) })
-  })
-}
+  // ── Insert predictions using batch ──
+  console.log('Inserting 25 predictions...')
 
-finalLogs.sort((a, b) => a.timestamp - b.timestamp)
+  const predStatements = predictionRows.map((row) => ({
+    sql: `INSERT INTO predictions (id, mint, symbol, name, score, curve_progress, velocity, reasoning, prediction, created_at, resolved_at, outcome, traded)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      row.id,
+      row.mint,
+      row.symbol,
+      row.name,
+      row.score,
+      row.curve_progress,
+      row.velocity,
+      row.reasoning,
+      row.prediction,
+      row.created_at,
+      row.resolved_at,
+      row.outcome,
+      row.traded,
+    ],
+  }))
 
-const insertLogs = db.transaction(() => {
-  for (const log of finalLogs.slice(0, 120)) {
-    insertLog.run(log.timestamp, log.level, log.message, log.data)
+  await db.batch(predStatements, 'write')
+
+  // ── Build position statements ──
+  console.log('Inserting 10 positions...')
+
+  const posStatements: { sql: string; args: any[] }[] = []
+
+  // 6 closed winning trades
+  for (let i = 0; i < winningTrades.length; i++) {
+    const wt = winningTrades[i]
+    const pred = predictionRows[wt.idx]
+    const entryTs = minsAfter(pred.created_at, randInt(2, 8))
+    const exitTs = minsAfter(entryTs, randInt(30, 180))
+    const exitPrice = parseFloat((wt.entryPrice * wt.exitPriceMult).toFixed(10))
+    const entryAmountNum = parseFloat(wt.amount)
+    const realizedPnl = parseFloat((entryAmountNum * (wt.pnlPct / 100)).toFixed(4))
+    const highestPrice = parseFloat((wt.entryPrice * wt.exitPriceMult * randFloat(1.0, 1.08, 2)).toFixed(10))
+
+    posStatements.push({
+      sql: `INSERT INTO positions (id, mint, symbol, entry_price, entry_amount, entry_tx_hash, entry_timestamp, current_price, highest_price, partial_exit_done, exit_price, exit_amount, exit_tx_hash, exit_timestamp, realized_pnl, realized_pnl_percent, status, graduation_score, reasoning)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        crypto.randomUUID(),
+        pred.mint,
+        pred.symbol,
+        wt.entryPrice,
+        wt.amount,
+        makeTxHash(),
+        entryTs,
+        null,             // current_price (null for closed)
+        highestPrice,
+        0,                // partial_exit_done
+        exitPrice,
+        (entryAmountNum * wt.exitPriceMult).toFixed(4),
+        makeTxHash(),
+        exitTs,
+        realizedPnl,
+        wt.pnlPct,
+        'closed',
+        pred.score,
+        positionReasonings[i],
+      ],
+    })
   }
+
+  // 2 closed losing trades
+  for (let i = 0; i < losingTrades.length; i++) {
+    const lt = losingTrades[i]
+    const pred = predictionRows[lt.idx]
+    const entryTs = minsAfter(pred.created_at, randInt(3, 10))
+    const exitTs = minsAfter(entryTs, randInt(30, 120))
+    const exitPrice = parseFloat((lt.entryPrice * lt.exitPriceMult).toFixed(10))
+    const entryAmountNum = parseFloat(lt.amount)
+    const realizedPnl = parseFloat((entryAmountNum * (lt.pnlPct / 100)).toFixed(4))
+    // For losers, highest price was slightly above entry before dropping
+    const highestPrice = parseFloat((lt.entryPrice * randFloat(1.02, 1.12, 2)).toFixed(10))
+
+    posStatements.push({
+      sql: `INSERT INTO positions (id, mint, symbol, entry_price, entry_amount, entry_tx_hash, entry_timestamp, current_price, highest_price, partial_exit_done, exit_price, exit_amount, exit_tx_hash, exit_timestamp, realized_pnl, realized_pnl_percent, status, graduation_score, reasoning)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        crypto.randomUUID(),
+        pred.mint,
+        pred.symbol,
+        lt.entryPrice,
+        lt.amount,
+        makeTxHash(),
+        entryTs,
+        null,
+        highestPrice,
+        0,
+        exitPrice,
+        (entryAmountNum * lt.exitPriceMult).toFixed(4),
+        makeTxHash(),
+        exitTs,
+        realizedPnl,
+        lt.pnlPct,
+        'closed',
+        pred.score,
+        positionReasonings[6 + i],
+      ],
+    })
+  }
+
+  // 2 open positions
+  for (let i = 0; i < openTrades.length; i++) {
+    const ot = openTrades[i]
+    const pred = predictionRows[ot.idx]
+    const entryTs = minsAfter(pred.created_at, randInt(2, 5))
+    const currentPrice = parseFloat((ot.entryPrice * ot.currentPriceMult).toFixed(10))
+    const highestPrice = parseFloat((ot.entryPrice * ot.currentPriceMult * randFloat(1.01, 1.05, 2)).toFixed(10))
+
+    posStatements.push({
+      sql: `INSERT INTO positions (id, mint, symbol, entry_price, entry_amount, entry_tx_hash, entry_timestamp, current_price, highest_price, partial_exit_done, exit_price, exit_amount, exit_tx_hash, exit_timestamp, realized_pnl, realized_pnl_percent, status, graduation_score, reasoning)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        crypto.randomUUID(),
+        pred.mint,
+        pred.symbol,
+        ot.entryPrice,
+        ot.amount,
+        makeTxHash(),
+        entryTs,
+        currentPrice,
+        highestPrice,
+        0,
+        null,   // no exit_price
+        null,   // no exit_amount
+        null,   // no exit_tx_hash
+        null,   // no exit_timestamp
+        null,   // no realized_pnl
+        null,   // no realized_pnl_percent
+        'open',
+        pred.score,
+        positionReasonings[8 + i],
+      ],
+    })
+  }
+
+  await db.batch(posStatements, 'write')
+
+  // ── Build agent log entries ──
+  console.log('Inserting 50 agent logs...')
+
+  interface LogEntry {
+    timestamp: number
+    level: string
+    message: string
+    data: string | null
+  }
+
+  const logEntries: LogEntry[] = []
+
+  // Agent start event
+  logEntries.push({
+    timestamp: hoursAgo(47.5),
+    level: 'info',
+    message: 'Agent started — TrendSurfer v0.1.0 initializing...',
+    data: JSON.stringify({ version: '0.1.0', mode: 'autonomous' }),
+  })
+
+  // Scan cycle logs (8 cycles spread across 48 hours)
+  const scanTimes = Array.from({ length: 8 }, (_, i) => hoursAgo(44 - i * 5.5))
+  for (const ts of scanTimes) {
+    const found = randInt(1, 5)
+    logEntries.push({
+      timestamp: ts,
+      level: 'info',
+      message: `Scan cycle: found ${found} new launch${found > 1 ? 'es' : ''} on trends.fun`,
+      data: JSON.stringify({ count: found, source: 'meteora_dbc' }),
+    })
+  }
+
+  // Token-specific analysis logs (one per traded token)
+  for (const idx of allTradedIndices) {
+    const pred = predictionRows[idx]
+    logEntries.push({
+      timestamp: minsAfter(pred.created_at, randInt(1, 4)),
+      level: 'info',
+      message: `Analyzing $${pred.symbol} — score ${pred.score}, velocity ${pred.velocity}`,
+      data: JSON.stringify({ mint: pred.mint, score: pred.score, velocity: pred.velocity, curve: pred.curve_progress }),
+    })
+  }
+
+  // Trade entry logs
+  for (const wt of winningTrades) {
+    const pred = predictionRows[wt.idx]
+    const buyTs = minsAfter(pred.created_at, randInt(2, 8))
+    logEntries.push({
+      timestamp: buyTs,
+      level: 'trade',
+      message: `Trade entry: buying $${pred.symbol} at ${wt.amount} SOL (score: ${pred.score})`,
+      data: JSON.stringify({ mint: pred.mint, amount: wt.amount, price: wt.entryPrice, action: 'buy' }),
+    })
+  }
+
+  for (const lt of losingTrades) {
+    const pred = predictionRows[lt.idx]
+    const buyTs = minsAfter(pred.created_at, randInt(3, 10))
+    logEntries.push({
+      timestamp: buyTs,
+      level: 'trade',
+      message: `Trade entry: buying $${pred.symbol} at ${lt.amount} SOL (score: ${pred.score})`,
+      data: JSON.stringify({ mint: pred.mint, amount: lt.amount, price: lt.entryPrice, action: 'buy' }),
+    })
+  }
+
+  for (const ot of openTrades) {
+    const pred = predictionRows[ot.idx]
+    const buyTs = minsAfter(pred.created_at, randInt(2, 5))
+    logEntries.push({
+      timestamp: buyTs,
+      level: 'trade',
+      message: `Trade entry: buying $${pred.symbol} at ${ot.amount} SOL (score: ${pred.score})`,
+      data: JSON.stringify({ mint: pred.mint, amount: ot.amount, price: ot.entryPrice, action: 'buy' }),
+    })
+  }
+
+  // Graduation detected logs
+  logEntries.push({
+    timestamp: minsAfter(predictionRows[2].created_at, randInt(50, 120)),
+    level: 'info',
+    message: `Graduation detected: $${predictionRows[2].symbol} migrated to DAMM pool`,
+    data: JSON.stringify({ mint: predictionRows[2].mint, event: 'graduation' }),
+  })
+  logEntries.push({
+    timestamp: minsAfter(predictionRows[3].created_at, randInt(60, 150)),
+    level: 'info',
+    message: `Graduation detected: $${predictionRows[3].symbol} migrated to DAMM pool`,
+    data: JSON.stringify({ mint: predictionRows[3].mint, event: 'graduation' }),
+  })
+
+  // Sell / exit logs for winning trades
+  for (const wt of winningTrades) {
+    const pred = predictionRows[wt.idx]
+    const sellTs = minsAfter(pred.created_at, randInt(60, 200))
+    logEntries.push({
+      timestamp: sellTs,
+      level: 'trade',
+      message: `Position closed: $${pred.symbol} +${wt.pnlPct.toFixed(1)}% profit`,
+      data: JSON.stringify({ mint: pred.mint, pnl_percent: wt.pnlPct, action: 'sell', reason: 'graduation' }),
+    })
+  }
+
+  // Stop-loss logs for losing trades
+  for (const lt of losingTrades) {
+    const pred = predictionRows[lt.idx]
+    const sellTs = minsAfter(pred.created_at, randInt(40, 120))
+    logEntries.push({
+      timestamp: sellTs,
+      level: 'trade',
+      message: `Stop-loss triggered: selling $${pred.symbol} at ${lt.pnlPct.toFixed(1)}%`,
+      data: JSON.stringify({ mint: pred.mint, pnl_percent: lt.pnlPct, action: 'sell', reason: 'stop_loss' }),
+    })
+  }
+
+  // Warning logs
+  logEntries.push({
+    timestamp: hoursAgo(18),
+    level: 'warn',
+    message: `High holder concentration detected for $${predictionRows[15].symbol} — top wallet holds 15%`,
+    data: JSON.stringify({ mint: predictionRows[15].mint, top_holder_pct: 15.2 }),
+  })
+  logEntries.push({
+    timestamp: hoursAgo(31),
+    level: 'warn',
+    message: `Security flag: $${predictionRows[17].symbol} has suspicious transfer fee logic`,
+    data: JSON.stringify({ mint: predictionRows[17].mint, flag: 'transfer_fee_anomaly' }),
+  })
+  logEntries.push({
+    timestamp: hoursAgo(8),
+    level: 'warn',
+    message: 'RPC rate limit approaching — throttling scan frequency to 1/min',
+    data: JSON.stringify({ rpc_calls_last_hour: 892, limit: 1000 }),
+  })
+
+  // Filler info logs
+  for (let i = 0; i < fillerInfoMessages.length; i++) {
+    logEntries.push({
+      timestamp: hoursAgo(randFloat(0.5, 46, 1)),
+      level: 'info',
+      message: fillerInfoMessages[i],
+      data: null,
+    })
+  }
+
+  // Sort by timestamp and trim to exactly 50
+  logEntries.sort((a, b) => a.timestamp - b.timestamp)
+  const finalLogs = logEntries.slice(0, 50)
+
+  const logStatements = finalLogs.map((log) => ({
+    sql: 'INSERT INTO agent_log (timestamp, level, message, data) VALUES (?, ?, ?, ?)',
+    args: [log.timestamp, log.level, log.message, log.data],
+  }))
+
+  await db.batch(logStatements, 'write')
+
+  // ── Summary ──
+  const predResult = await db.execute('SELECT COUNT(*) as c FROM predictions')
+  const posResult = await db.execute('SELECT COUNT(*) as c FROM positions')
+  const logResult = await db.execute('SELECT COUNT(*) as c FROM agent_log')
+  const pnlResult = await db.execute(
+    "SELECT COALESCE(SUM(realized_pnl), 0) as total FROM positions WHERE status = 'closed'"
+  )
+
+  const totalPredictions = (predResult.rows[0] as any).c
+  const totalPositions = (posResult.rows[0] as any).c
+  const totalLogs = (logResult.rows[0] as any).c
+  const totalPnl = (pnlResult.rows[0] as any).total
+
+  console.log('')
+  console.log('=== Seed Complete ===')
+  console.log(`Predictions: ${totalPredictions}`)
+  console.log(`Positions:   ${totalPositions}`)
+  console.log(`Agent Logs:  ${totalLogs}`)
+  console.log(`Total PnL:   ${Number(totalPnl).toFixed(4)} SOL`)
+  console.log(`Database:    ${tursoUrl}`)
+  console.log('')
+}
+
+seed().catch((err) => {
+  console.error('Seed failed:', err)
+  process.exit(1)
 })
-insertLogs()
-
-// ── Summary ──
-
-const predCount = (db.prepare('SELECT COUNT(*) as c FROM predictions').get() as any).c
-const posCount = (db.prepare('SELECT COUNT(*) as c FROM positions').get() as any).c
-const logCount = (db.prepare('SELECT COUNT(*) as c FROM agent_log').get() as any).c
-const pnl = db.prepare('SELECT COALESCE(SUM(realized_pnl), 0) as total FROM positions WHERE status = ?').get('closed') as any
-
-console.log('')
-console.log('=== Seed Complete ===')
-console.log(`Predictions: ${predCount}`)
-console.log(`Positions:   ${posCount}`)
-console.log(`Agent Logs:  ${logCount}`)
-console.log(`Total PnL:   ${pnl.total.toFixed(4)} SOL`)
-console.log(`DB Path:     ${DB_PATH}`)
-console.log('')
-
-db.close()
