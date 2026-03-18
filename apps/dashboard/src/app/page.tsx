@@ -358,7 +358,7 @@ export default function Dashboard() {
                 animate="visible"
                 className="space-y-2"
               >
-                {filteredTokens.slice(0, 12).map((token, i) => (
+                {filteredTokens.slice(0, 20).map((token, i) => (
                   <ScannerTokenRow
                     key={token.id}
                     token={token}
@@ -396,7 +396,7 @@ export default function Dashboard() {
                 viewport={{ once: true, margin: '-50px' }}
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
               >
-                {predictions.slice(0, 9).map((pred) => (
+                {predictions.slice(0, 12).map((pred) => (
                   <PredictionCard key={pred.id} prediction={pred} />
                 ))}
               </motion.div>
@@ -1246,6 +1246,7 @@ function ScannerTokenRow({
 // ────────────────────────────────────────────────────────────────────────────────
 
 function PredictionCard({ prediction }: { prediction: Prediction }) {
+  const [expanded, setExpanded] = useState(false)
   const scoreColor = prediction.score >= 75 ? '#059669' : prediction.score >= 50 ? '#d97706' : '#9ca3af'
   const radius = 28
   const circumference = 2 * Math.PI * radius
@@ -1312,10 +1313,20 @@ function PredictionCard({ prediction }: { prediction: Prediction }) {
         </div>
       </div>
 
-      {/* AI reasoning excerpt */}
-      <p className="text-xs text-gray-500 leading-relaxed line-clamp-3 mb-3">
-        {prediction.reasoning}
-      </p>
+      {/* AI reasoning — click to expand */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="text-left w-full mb-3 group"
+      >
+        <p className={`text-xs text-gray-500 leading-relaxed ${expanded ? '' : 'line-clamp-3'}`}>
+          {prediction.reasoning}
+        </p>
+        {prediction.reasoning && prediction.reasoning.length > 120 && (
+          <span className="text-[10px] text-blue-600 group-hover:text-blue-700 mt-1 inline-block">
+            {expanded ? 'Show less' : 'Read full analysis'}
+          </span>
+        )}
+      </button>
 
       {/* Footer: outcome badge + velocity */}
       <div className="flex items-center justify-between">
