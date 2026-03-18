@@ -5,3 +5,4 @@ data/
 *.tsbuildinfo
 dist/
 .vercel
+test-results/
