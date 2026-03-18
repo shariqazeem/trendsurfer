@@ -25,17 +25,48 @@ const knownPools = new Map<string, TokenLaunch>()
 let lastSignature: string | undefined
 let poolConfigFilter: string | undefined
 
+// Exponential backoff state for RPC 429s
+let backoffMs = 0
+let lastRateLimit = 0
+const MAX_BACKOFF = 5 * 60 * 1000 // 5 minutes max
+
+function checkBackoff(): boolean {
+  if (backoffMs > 0 && Date.now() - lastRateLimit < backoffMs) {
+    const remaining = Math.round((backoffMs - (Date.now() - lastRateLimit)) / 1000)
+    console.log(`RPC backoff active — ${remaining}s remaining`)
+    return true // skip this cycle
+  }
+  return false
+}
+
+function handleRateLimit() {
+  lastRateLimit = Date.now()
+  backoffMs = backoffMs === 0 ? 15000 : Math.min(backoffMs * 2, MAX_BACKOFF)
+  console.log(`RPC 429 — backing off for ${backoffMs / 1000}s`)
+}
+
+function resetBackoff() {
+  if (backoffMs > 0) {
+    console.log('RPC backoff cleared — calls succeeding')
+    backoffMs = 0
+  }
+}
+
 /** Set the PoolConfig address to filter for (e.g. trends.fun's deployer config) */
 export function setPoolConfigFilter(configAddress?: string) {
   poolConfigFilter = configAddress
 }
 
 export async function scanLaunches(limit: number = 20): Promise<TokenLaunch[]> {
+  // Skip if in backoff from previous 429
+  if (checkBackoff()) return []
+
   const newLaunches: TokenLaunch[] = []
 
   // Strategy 1: Discover pools from recent DBC transactions
   try {
     const recentPools = await discoverRecentPools(limit)
+    resetBackoff() // RPC call succeeded
 
     for (const pool of recentPools) {
       if (knownPools.has(pool.poolAddress)) continue
@@ -88,8 +119,13 @@ export async function scanLaunches(limit: number = 20): Promise<TokenLaunch[]> {
       knownPools.set(pool.poolAddress, launch)
       newLaunches.push(launch)
     }
-  } catch (error) {
-    console.error('Pool discovery error:', error)
+  } catch (error: any) {
+    const msg = String(error?.message || error)
+    if (msg.includes('429') || msg.includes('rate') || msg.includes('max usage')) {
+      handleRateLimit()
+    } else {
+      console.error('Pool discovery error:', msg.substring(0, 200))
+    }
   }
 
   return newLaunches
@@ -100,22 +136,39 @@ export function getKnownLaunches(): TokenLaunch[] {
   return Array.from(knownPools.values())
 }
 
-// Refresh curve progress for all known non-graduated launches
+// Refresh curve progress for promising non-graduated launches only
+// Skips graduated tokens and tokens below 40% curve to save RPC calls
 export async function refreshLaunches(): Promise<TokenLaunch[]> {
+  if (checkBackoff()) return getKnownLaunches()
+
   const launches = getKnownLaunches()
+  let refreshed = 0
 
   for (const launch of launches) {
+    // Skip graduated tokens — no need to check anymore
     if (launch.graduated) continue
+    // Skip low-progress tokens — they rarely change fast enough to matter
+    if (launch.curveProgress < 40) continue
 
     try {
       const poolState = await getPoolState(launch.poolAddress)
       if (poolState) {
         launch.curveProgress = poolState.curveProgress
         launch.graduated = poolState.graduated
+        refreshed++
       }
-    } catch {
-      // Skip failed refresh
+      resetBackoff()
+    } catch (error: any) {
+      const msg = String(error?.message || error)
+      if (msg.includes('429') || msg.includes('rate') || msg.includes('max usage')) {
+        handleRateLimit()
+        break // Stop refreshing on rate limit
+      }
     }
+  }
+
+  if (refreshed > 0) {
+    console.log(`Refreshed ${refreshed} active tokens (>40% curve)`)
   }
 
   return launches

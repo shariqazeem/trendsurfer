@@ -83,13 +83,13 @@ export async function startAgent(riskConfig?: Partial<RiskConfig>): Promise<void
     console.log('Set COMMONSTACK_API_KEY in .env.local to enable AI-powered analysis')
   }
 
-  // Start scan loop (every 30 seconds — be gentle on RPC)
-  console.log('\nStarting scan loop...')
+  // Start scan loop (every 60 seconds — protect Helius free tier 100k/day)
+  console.log('\nStarting scan loop (60s interval)...')
   await runScanCycle()
-  scanInterval = setInterval(runScanCycle, 30000)
+  scanInterval = setInterval(runScanCycle, 60000)
 
-  // Start position monitor loop (every 60 seconds)
-  monitorInterval = setInterval(runMonitorCycle, 60000)
+  // Start position monitor loop (every 120 seconds)
+  monitorInterval = setInterval(runMonitorCycle, 120000)
 
   console.log('Agent loops started. Press Ctrl+C to stop.\n')
 }
