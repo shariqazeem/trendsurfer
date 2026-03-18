@@ -99,7 +99,7 @@ Respond in this exact JSON format (no markdown, no code blocks, just raw JSON):
     const score = onChainAnalysis.score
     return {
       score,
-      reasoning: `AI analysis unavailable. On-chain score: ${score}/100. ${onChainAnalysis.reasoning}`,
+      reasoning: onChainAnalysis.reasoning,
       prediction:
         score >= 75 ? 'will_graduate' : score >= 40 ? 'watching' : 'unlikely',
     }
