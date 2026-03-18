@@ -132,6 +132,7 @@ export class TrendSurferSkill {
   /** Get a swap quote */
   async getQuote(params: {
     tokenMint: string
+    tokenSymbol?: string
     side: 'buy' | 'sell'
     amount: string
     walletAddress: string

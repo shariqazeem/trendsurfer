@@ -26,17 +26,22 @@ export interface TradeParams {
 // Get a swap quote
 export async function getTradeQuote(params: {
   tokenMint: string
+  tokenSymbol?: string // Required by Bitget API — pass the token symbol
   side: 'buy' | 'sell'
   amount: string
   walletAddress: string
   slippage?: string
 }): Promise<any> {
-  const fromContract = params.side === 'buy' ? SOL_ADDRESS : params.tokenMint
-  const toContract = params.side === 'buy' ? params.tokenMint : SOL_ADDRESS
+  const isBuy = params.side === 'buy'
+  const fromContract = isBuy ? SOL_ADDRESS : params.tokenMint
+  const toContract = isBuy ? params.tokenMint : SOL_ADDRESS
+  const tokenSym = params.tokenSymbol || 'TOKEN'
 
   return getSwapQuote({
     fromContract,
+    fromSymbol: isBuy ? 'SOL' : tokenSym,
     toContract,
+    toSymbol: isBuy ? tokenSym : 'SOL',
     fromAmount: params.amount,
     fromAddress: params.walletAddress,
     slippage: params.slippage || '0.5',

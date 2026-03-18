@@ -53,9 +53,10 @@ async function bitgetPost<T = any>(path: string, body: Record<string, unknown>):
 
   const data = await response.json()
 
-  // Bitget wraps responses in { code, msg/message, data }
-  if (data.code !== undefined && data.code !== 0 && data.code !== '0') {
-    throw new Error(`Bitget API error ${data.code}: ${data.msg || data.message || 'unknown'}`)
+  // Bitget wraps responses in { status, error_code, data, msg }
+  const errCode = data.error_code ?? data.code
+  if (errCode !== undefined && errCode !== 0 && errCode !== '0') {
+    throw new Error(`Bitget API error ${errCode}: ${data.msg || data.message || 'unknown'}`)
   }
 
   return data.data ?? data
@@ -170,21 +171,25 @@ export interface SwapQuoteParams {
 
 export async function getSwapQuote(params: SwapQuoteParams) {
   const chain = params.fromChain || SOLANA_CHAIN
-  return bitgetPost('/swap-go/swapx/quote', {
-    fromAddress: params.fromAddress,
-    fromChain: chain,
-    fromSymbol: params.fromSymbol || '',
+  // Build body — only include symbol fields if they have values
+  // Bitget API rejects empty string symbols
+  const body: Record<string, unknown> = {
     fromContract: params.fromContract,
     fromAmount: params.fromAmount,
-    toChain: params.toChain || chain,
-    toSymbol: params.toSymbol || '',
+    fromChain: chain,
     toContract: params.toContract,
-    toAddress: params.toAddress || params.fromAddress,
-    tab_type: 'swap',
-    publicKey: '',
-    slippage: params.slippage || '0.5',
-    requestId: `ts-${Date.now()}`,
-  })
+    fromAddress: params.fromAddress,
+    toChain: params.toChain || chain,
+    estimateGas: true,
+    skipCache: true,
+  }
+  if (params.fromSymbol) body.fromSymbol = params.fromSymbol
+  else if (params.fromContract === '') body.fromSymbol = 'SOL'
+  if (params.toSymbol) body.toSymbol = params.toSymbol
+  else if (params.toContract === '') body.toSymbol = 'SOL'
+  if (params.slippage) body.slippage = params.slippage
+
+  return bitgetPost('/swap-go/swapx/quote', body)
 }
 
 export interface SwapConfirmParams {
