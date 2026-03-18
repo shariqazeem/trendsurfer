@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { motion, useInView, useMotionValue, useTransform, animate, AnimatePresence } from 'framer-motion'
+import { motion, useInView, useMotionValue, useTransform, animate, AnimatePresence, type MotionValue } from 'framer-motion'
 import Link from 'next/link'
 
 // ────────────────────────────────────────────────────────────────────────────────
@@ -872,8 +872,8 @@ function AnimatedCurveFill({
   h,
   pad,
 }: {
-  progress: ReturnType<typeof useMotionValue>
-  fillColor: ReturnType<typeof useTransform>
+  progress: MotionValue<number>
+  fillColor: MotionValue<string>
   curvePoints: [number, number][]
   steps: number
   w: number
@@ -1468,7 +1468,7 @@ function LogRow({ entry }: { entry: LogEntry }) {
 
   const level = (entry.level || 'INFO').toUpperCase()
   const colors = levelColors[level] || levelColors.INFO
-  let parsedData: unknown = null
+  let parsedData: Record<string, unknown> | string | null = null
   if (entry.data) {
     try {
       parsedData = JSON.parse(entry.data)
