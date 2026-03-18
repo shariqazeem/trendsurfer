@@ -18,12 +18,17 @@ import {
   findPoolsByMint,
   discoverRecentPools,
 } from '../../../lib/meteora'
-import { getHistoricalCoins } from '../../../lib/bitget'
 import type { TokenLaunch } from './types'
 
 // Cache of known pools to avoid reprocessing
 const knownPools = new Map<string, TokenLaunch>()
 let lastSignature: string | undefined
+let poolConfigFilter: string | undefined
+
+/** Set the PoolConfig address to filter for (e.g. trends.fun's deployer config) */
+export function setPoolConfigFilter(configAddress?: string) {
+  poolConfigFilter = configAddress
+}
 
 export async function scanLaunches(limit: number = 20): Promise<TokenLaunch[]> {
   const newLaunches: TokenLaunch[] = []
@@ -35,6 +40,9 @@ export async function scanLaunches(limit: number = 20): Promise<TokenLaunch[]> {
     for (const pool of recentPools) {
       if (knownPools.has(pool.poolAddress)) continue
       if (pool.isMigrated) continue
+
+      // Filter by PoolConfig if set (e.g. only trends.fun pools)
+      if (poolConfigFilter && pool.configAddress !== poolConfigFilter) continue
 
       // Get full state including config
       const state = await getPoolState(pool.poolAddress)

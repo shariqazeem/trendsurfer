@@ -2,6 +2,7 @@
 // Analyzes bonding curve velocity and predicts graduation probability
 
 import { getPoolState } from '../../../lib/meteora'
+import { getConnection } from '../../../lib/helius'
 import { getSecurityInfo } from '../../../lib/bitget'
 import type {
   BondingCurveState,
@@ -120,11 +121,24 @@ export async function analyzeGraduation(
     // Security check failed, use default
   }
 
-  // 4. Check holder distribution (rough estimate)
+  // 4. Check holder distribution via getTokenLargestAccounts (lightweight RPC call)
   let holderCount = 0
   let topHolderConcentration = 0
-  // Note: Full holder analysis would require getProgramAccounts which can be expensive
-  // For now we use a simplified approach
+  try {
+    const conn = getConnection()
+    const { PublicKey: PK } = await import('@solana/web3.js')
+    const largest = await conn.getTokenLargestAccounts(new PK(launch.mint))
+    holderCount = largest.value.length
+    if (holderCount > 0) {
+      const totalSupply = largest.value.reduce((sum: number, a: { amount: string }) => sum + Number(a.amount), 0)
+      if (totalSupply > 0) {
+        const topHolder = Number(largest.value[0].amount)
+        topHolderConcentration = Math.round((topHolder / totalSupply) * 100)
+      }
+    }
+  } catch {
+    // Holder analysis failed, use defaults (neutral score)
+  }
 
   // 5. Calculate composite score
   const score = calculateCompositeScore({

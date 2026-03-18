@@ -18,6 +18,7 @@ export interface SkillConfig {
   heliusRpcUrl?: string
   pollingIntervalMs?: number // default 10000 (10s)
   maxTokenAge?: number // max age in ms to consider a token "new" (default 24h)
+  poolConfigAddress?: string // Meteora DBC PoolConfig address to filter by (e.g. trends.fun's config)
 }
 
 export interface ScanResult {

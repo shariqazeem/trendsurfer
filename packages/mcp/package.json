@@ -1,6 +1,6 @@
 {
   "name": "trendsurfer-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MCP server for TrendSurfer — expose trends.fun intelligence to any AI agent framework",
   "author": "TrendSurfer <https://github.com/shariqazeem/trendsurfer>",
   "license": "MIT",
@@ -23,23 +23,8 @@
     "bonding-curve",
     "trading"
   ],
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
   "bin": {
     "trendsurfer-mcp": "dist/index.js"
-  },
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.mts",
-        "default": "./dist/index.mjs"
-      },
-      "require": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      }
-    }
   },
   "files": [
     "dist",
@@ -54,7 +39,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "trendsurfer-skill": "*"
+    "@solana/web3.js": "^1.91.0"
   },
   "devDependencies": {
     "tsup": "^8.0.0",

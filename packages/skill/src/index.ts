@@ -8,6 +8,7 @@ import {
   refreshLaunches,
   addKnownPool,
   clearCache,
+  setPoolConfigFilter,
 } from './scanner'
 import {
   analyzeGraduation,
@@ -44,6 +45,10 @@ export class TrendSurferSkill {
     }
     if (config.heliusRpcUrl) {
       process.env.HELIUS_RPC_URL = config.heliusRpcUrl
+    }
+    // Set pool config filter for trends.fun-specific scanning
+    if (config.poolConfigAddress) {
+      setPoolConfigFilter(config.poolConfigAddress)
     }
   }
 
