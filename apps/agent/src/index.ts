@@ -108,6 +108,9 @@ export function stopAgent(): void {
 async function runScanCycle(): Promise<void> {
   if (!running) return
 
+  // Heartbeat — keeps the dashboard "Agent Live" indicator green
+  await logAgent('info', `Scan cycle — ${skill.getLaunches().length} tokens tracked`)
+
   try {
     // 1. Scan for new launches
     const result = await skill.scanLaunches(10)

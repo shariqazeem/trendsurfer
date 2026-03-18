@@ -50,7 +50,7 @@ export async function GET() {
       const lastLog = logs[0] as any
 
       status = {
-        running: lastLog ? (Date.now() - lastLog.timestamp < 60000) : false,
+        running: lastLog ? (Date.now() - lastLog.timestamp < 5 * 60 * 1000) : false,
         uptime: 0,
         tokensScanned: predictions?.c || 0,
         tokensAnalyzed: predictions?.c || 0,
