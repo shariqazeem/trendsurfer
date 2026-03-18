@@ -22,6 +22,7 @@ import {
   getTotalPnl,
   getPredictions,
   getAllPositions,
+  getLastPrediction,
 } from './db'
 import { getTokenInfo } from '../../../lib/bitget'
 import { hasWallet, getWalletAddress, signBitgetOrder } from '../../../lib/signer'
@@ -122,8 +123,9 @@ async function runScanCycle(): Promise<void> {
     const allLaunches = await skill.refreshLaunches()
 
     // 3. Analyze tokens with meaningful progress
+    // Only analyze tokens above 10% curve to save API credits
     const candidates = allLaunches.filter(
-      (l) => !l.graduated && l.curveProgress >= 5
+      (l) => !l.graduated && l.curveProgress >= 10
     )
 
     if (candidates.length > 0) {
@@ -131,6 +133,16 @@ async function runScanCycle(): Promise<void> {
     }
 
     for (const launch of candidates) {
+      // Skip re-analysis if curve hasn't changed significantly since last prediction
+      const lastPred = await getLastPrediction(launch.mint)
+      if (lastPred) {
+        const curveChange = Math.abs(launch.curveProgress - (lastPred.curveProgress || 0))
+        const timeSince = Date.now() - (lastPred.createdAt || 0)
+        // Only re-analyze if curve moved >3% or it's been >5 minutes
+        if (curveChange < 3 && timeSince < 5 * 60 * 1000) {
+          continue
+        }
+      }
       await analyzeLaunch(launch)
     }
   } catch (error) {
@@ -151,18 +163,21 @@ async function analyzeLaunch(launch: TokenLaunch): Promise<void> {
     // 2. Security check
     const security = await skill.checkSecurity(launch.mint)
 
-    // 3. AI analysis — use Claude if available, otherwise on-chain only
+    // 3. AI analysis — only for promising tokens (>40% curve) to save credits
+    // Tokens below 40% get on-chain analysis only (free, still accurate)
     let score: number
     let reasoning: string
     let prediction: 'will_graduate' | 'unlikely' | 'watching'
 
-    if (process.env.COMMONSTACK_API_KEY) {
+    const useAI = process.env.COMMONSTACK_API_KEY && onChainAnalysis.curveProgress >= 40
+
+    if (useAI) {
       const claudeResult = await analyzeWithClaude(launch, onChainAnalysis, security)
       score = claudeResult.score
       reasoning = claudeResult.reasoning
       prediction = claudeResult.prediction
     } else {
-      // Fallback: on-chain score only
+      // On-chain score only (no AI cost)
       score = onChainAnalysis.score
       reasoning = onChainAnalysis.reasoning
       prediction = score >= 75 ? 'will_graduate' : score >= 40 ? 'watching' : 'unlikely'

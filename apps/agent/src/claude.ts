@@ -7,8 +7,9 @@ import type { GraduationAnalysis, TokenLaunch, SecurityCheck } from '../../../li
 
 const COMMONSTACK_BASE_URL = 'https://api.commonstack.ai/v1'
 
-// Default to a cheap, fast model — override with COMMONSTACK_MODEL env var
-const DEFAULT_MODEL = 'deepseek/deepseek-v3.2'
+// Use cheapest available model — Gemini Flash ($0.3/M input, $2.5/M output)
+// Override with COMMONSTACK_MODEL env var
+const DEFAULT_MODEL = 'google/gemini-2.5-flash'
 
 function getClient(): OpenAI {
   const apiKey = process.env.COMMONSTACK_API_KEY
@@ -25,26 +26,7 @@ function getModel(): string {
   return process.env.COMMONSTACK_MODEL || DEFAULT_MODEL
 }
 
-const SYSTEM_PROMPT = `You are TrendSurfer's AI analyst — an expert at predicting whether trends.fun tokens will "graduate" (complete their bonding curve and migrate to a full DEX pool).
-
-You analyze tokens launched on trends.fun, which are tokenized X/Twitter posts on Solana using Meteora's Dynamic Bonding Curve (DBC).
-
-When a token's bonding curve fills up (enough buy pressure), it "graduates" — liquidity auto-migrates to a full Meteora DAMM pool. Pre-graduation buyers often see a price jump.
-
-You receive on-chain data about each token and must provide:
-1. A graduation score (0-100) — probability the token will graduate
-2. A clear, concise reasoning for your score
-3. A prediction: "will_graduate", "unlikely", or "watching"
-
-Key factors to consider:
-- Curve progress (% filled) — higher = closer to graduation
-- Fill velocity — accelerating curves are bullish
-- Security audit — honeypots, mint authority, freeze authority
-- Tweet content/author — viral tweets from high-follower accounts graduate faster
-- Time since launch — tokens that fill quickly are more likely to graduate
-- Holder distribution — concentrated holdings are risky
-
-Be direct and specific. Traders rely on your analysis.`
+const SYSTEM_PROMPT = `You predict trends.fun token graduations. Tokens are tokenized tweets on Meteora DBC (Solana). When bonding curve fills → graduates to DEX → price jumps. Respond with JSON only: {"score": 0-100, "reasoning": "2 sentences", "prediction": "will_graduate|unlikely|watching"}`
 
 export async function analyzeWithClaude(
   launch: TokenLaunch,
@@ -90,7 +72,7 @@ Respond in this exact JSON format (no markdown, no code blocks, just raw JSON):
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: prompt },
       ],
-      max_tokens: 300,
+      max_tokens: 150,
       temperature: 0.3,
     })
 

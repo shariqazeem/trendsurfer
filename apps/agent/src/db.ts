@@ -136,6 +136,15 @@ export async function getActivePredictions(): Promise<Prediction[]> {
   return result.rows.map(rowToPrediction)
 }
 
+export async function getLastPrediction(mint: string): Promise<Prediction | null> {
+  const d = getDb()
+  const result = await d.execute({
+    sql: 'SELECT * FROM predictions WHERE mint = ? ORDER BY created_at DESC LIMIT 1',
+    args: [mint],
+  })
+  return result.rows.length > 0 ? rowToPrediction(result.rows[0]) : null
+}
+
 function rowToPrediction(row: any): Prediction {
   return {
     id: row.id,
