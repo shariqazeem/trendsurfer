@@ -291,7 +291,7 @@ function SandboxContent() {
               )}
             </div>
             <button
-              onClick={handleAnalyze}
+              onClick={() => handleAnalyze()}
               disabled={isLoading || !mint.trim()}
               className="px-6 py-3 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
             >
