@@ -76,20 +76,19 @@ interface AnalysisResult {
   tweetAuthor?: string
 }
 
-async function getConnection(): Promise<Connection> {
-  // Try Helius first, fallback to public RPC if rate-limited
-  const helius = new Connection(HELIUS_RPC_URL, 'confirmed')
-  try {
-    await helius.getSlot()
-    return helius
-  } catch {
-    console.log('Helius rate-limited, falling back to public RPC')
-    return new Connection(PUBLIC_RPC_URL, 'confirmed')
-  }
+function getHeliusConnection(): Connection {
+  return new Connection(HELIUS_RPC_URL, 'confirmed')
+}
+
+function getPublicConnection(): Connection {
+  return new Connection(PUBLIC_RPC_URL, 'confirmed')
 }
 
 async function analyzeMint(mint: string): Promise<AnalysisResult> {
-  const conn = await getConnection()
+  // Use public RPC for getProgramAccounts (Helius blocks it for large programs)
+  // Use Helius for everything else (faster, DAS API)
+  const publicConn = getPublicConnection()
+  const heliusConn = getHeliusConnection()
 
   // 1. Find the pool for this mint
   const mintPk = new PublicKey(mint)
@@ -145,7 +144,8 @@ async function analyzeMint(mint: string): Promise<AnalysisResult> {
   let poolData: Buffer | null = null
 
   try {
-    const accounts = await conn.getProgramAccounts(new PublicKey(METEORA_DBC_PROGRAM), {
+    // Use public RPC for getProgramAccounts — Helius blocks this for large programs
+    const accounts = await publicConn.getProgramAccounts(new PublicKey(METEORA_DBC_PROGRAM), {
       filters: [
         { dataSize: 424 },
         { memcmp: { offset: 136, bytes: mint } },
@@ -158,9 +158,9 @@ async function analyzeMint(mint: string): Promise<AnalysisResult> {
   } catch (rpcErr: any) {
     const msg = rpcErr?.message || ''
     if (msg.includes('429') || msg.includes('rate') || msg.includes('max usage')) {
-      throw new Error('Helius RPC rate limit reached — the free tier resets daily. Try again later or use your own key with the SDK: npm install trendsurfer-skill')
+      throw new Error('RPC rate limit reached. Try again in a moment.')
     }
-    throw new Error('Failed to search for Meteora DBC pool. Try again in a moment.')
+    throw new Error('Failed to search for Meteora DBC pool. The token may not be on a bonding curve.')
   }
 
   if (!poolData) {
@@ -183,7 +183,7 @@ async function analyzeMint(mint: string): Promise<AnalysisResult> {
   let migrationThreshold = BigInt(0)
 
   try {
-    const configInfo = await conn.getAccountInfo(new PublicKey(configAddress))
+    const configInfo = await heliusConn.getAccountInfo(new PublicKey(configAddress))
     if (configInfo?.data) {
       const configBuf = configInfo.data as Buffer
       const configDisc = configBuf.subarray(0, 8).toString('hex')
@@ -203,7 +203,7 @@ async function analyzeMint(mint: string): Promise<AnalysisResult> {
   let holderCount = 0
   let topHolderConcentration = 0
   try {
-    const largest = await conn.getTokenLargestAccounts(mintPk)
+    const largest = await heliusConn.getTokenLargestAccounts(mintPk)
     holderCount = largest.value.length
     if (holderCount > 0) {
       const total = largest.value.reduce((s: number, a) => s + Number(a.amount), 0)
