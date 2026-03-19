@@ -65,7 +65,28 @@ interface PnLData {
   winRate: number
 }
 
+interface Analysis {
+  mint: string
+  name: string
+  symbol: string
+  poolAddress: string
+  score: number
+  curveProgress: number
+  velocity: string
+  velocityScore: number
+  holderCount: number
+  topHolderConcentration: number
+  securityScore: number
+  safe: boolean
+  reasoning: string
+  prediction: string
+  graduated: boolean
+  tweetUrl?: string
+  tweetAuthor?: string
+}
+
 type Filter = 'all' | 'hot' | 'graduating' | 'graduated'
+type SandboxPhase = 'idle' | 'validating' | 'fetching' | 'analyzing' | 'done' | 'error'
 
 // ────────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -88,6 +109,20 @@ const staggerItem = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
 }
 
+const SANDBOX_PHASE_LABELS: Record<SandboxPhase, string> = {
+  idle: '',
+  validating: 'Validating address...',
+  fetching: 'Fetching on-chain data from Solana...',
+  analyzing: 'Running graduation analysis...',
+  done: 'Analysis complete',
+  error: 'Analysis failed',
+}
+
+const EXAMPLE_TOKENS = [
+  { label: 'Try: USDC', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' },
+  { label: 'Try: BONK', mint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263' },
+]
+
 // ────────────────────────────────────────────────────────────────────────────────
 // Main Dashboard
 // ────────────────────────────────────────────────────────────────────────────────
@@ -101,6 +136,65 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
   const [logExpanded, setLogExpanded] = useState(false)
+
+  // Sandbox state (hero)
+  const [sandboxMint, setSandboxMint] = useState('')
+  const [sandboxPhase, setSandboxPhase] = useState<SandboxPhase>('idle')
+  const [sandboxAnalysis, setSandboxAnalysis] = useState<Analysis | null>(null)
+  const [sandboxError, setSandboxError] = useState('')
+  const [sdkCopied, setSdkCopied] = useState(false)
+  const sandboxInputRef = useRef<HTMLInputElement>(null)
+
+  const sandboxIsLoading = sandboxPhase === 'validating' || sandboxPhase === 'fetching' || sandboxPhase === 'analyzing'
+
+  const handleSandboxAnalyze = useCallback(async () => {
+    const trimmed = sandboxMint.trim()
+    if (!trimmed) {
+      sandboxInputRef.current?.focus()
+      return
+    }
+
+    setSandboxPhase('validating')
+    setSandboxAnalysis(null)
+    setSandboxError('')
+
+    if (trimmed.length < 32 || trimmed.length > 44) {
+      setSandboxError('Invalid Solana address -- must be 32-44 characters.')
+      setSandboxPhase('error')
+      return
+    }
+
+    setSandboxPhase('fetching')
+    await new Promise((r) => setTimeout(r, 400))
+    setSandboxPhase('analyzing')
+
+    try {
+      const res = await fetch('/api/analyze-live', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mint: trimmed }),
+      })
+      const data = await res.json()
+
+      if (!res.ok || data.error) {
+        setSandboxError(data.error || 'Analysis failed')
+        setSandboxPhase('error')
+        return
+      }
+
+      setSandboxAnalysis(data.analysis)
+      setSandboxPhase('done')
+    } catch {
+      setSandboxError('Network error -- could not reach the analysis server.')
+      setSandboxPhase('error')
+    }
+  }, [sandboxMint])
+
+  const handleSdkCopy = useCallback(() => {
+    navigator.clipboard.writeText('npm install trendsurfer-skill')
+    setSdkCopied(true)
+    setTimeout(() => setSdkCopied(false), 2000)
+  }, [])
 
   const fetchAll = useCallback(async () => {
     try {
@@ -194,11 +288,11 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-white text-gray-900">
       {/* ================================================================== */}
-      {/* SECTION 1: HERO                                                     */}
+      {/* SECTION 1: HERO = SANDBOX                                          */}
       {/* ================================================================== */}
       <section className="bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-16 sm:pt-16 sm:pb-20">
-          {/* Top row: logo + status */}
+          {/* Top row: logo + status + links */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-gray-900 flex items-center justify-center">
@@ -229,27 +323,352 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="text-center mb-10"
+            className="text-center mb-8"
           >
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-gray-900">
               The Intelligence Skill for{' '}
               <span className="text-blue-600">trends.fun</span>
             </h1>
             <p className="text-base sm:text-lg text-gray-500 mt-3 max-w-2xl mx-auto">
-              Predict which tokenized tweets will graduate from bonding curve to DEX.
-              Buy before. Sell after. Reusable SDK for any AI agent.
+              Paste any token mint address &rarr; instant graduation analysis
             </p>
           </motion.div>
 
-          {/* Animated Bonding Curve - THE SIGNATURE VISUAL */}
+          {/* ── Sandbox Input Area ── */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.5 }}
-            className="max-w-xl mx-auto mb-12"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.15 }}
+            className="max-w-2xl mx-auto mb-6"
           >
-            <HeroBondingCurve />
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <input
+                  ref={sandboxInputRef}
+                  type="text"
+                  value={sandboxMint}
+                  onChange={(e) => setSandboxMint(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !sandboxIsLoading && handleSandboxAnalyze()}
+                  placeholder="Paste a Solana token mint address..."
+                  disabled={sandboxIsLoading}
+                  className="w-full px-4 py-3.5 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 focus:bg-white transition-colors disabled:opacity-50 placeholder:text-gray-400"
+                  style={{ fontFamily: MONO }}
+                />
+                {sandboxMint && !sandboxIsLoading && (
+                  <button
+                    onClick={() => { setSandboxMint(''); setSandboxPhase('idle'); setSandboxAnalysis(null); setSandboxError('') }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={handleSandboxAnalyze}
+                disabled={sandboxIsLoading || !sandboxMint.trim()}
+                className="px-6 py-3.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
+              >
+                {sandboxIsLoading ? (
+                  <>
+                    <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.2" />
+                      <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                    Analyzing...
+                  </>
+                ) : (
+                  'Analyze'
+                )}
+              </button>
+            </div>
+
+            {/* Quick test buttons */}
+            <div className="flex items-center gap-2 mt-3">
+              <span className="text-[11px] text-gray-400">Quick test:</span>
+              {EXAMPLE_TOKENS.map((ex) => (
+                <button
+                  key={ex.mint}
+                  onClick={() => setSandboxMint(ex.mint)}
+                  disabled={sandboxIsLoading}
+                  className="text-[11px] text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                >
+                  {ex.label}
+                </button>
+              ))}
+            </div>
           </motion.div>
+
+          {/* ── Sandbox Phase Indicator ── */}
+          <div className="max-w-2xl mx-auto">
+            <AnimatePresence mode="wait">
+              {sandboxIsLoading && (
+                <motion.div
+                  key="sandbox-loading"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="mb-6"
+                >
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-5">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className="w-8 h-8 rounded-full border-2 border-gray-200" />
+                        <div className="absolute inset-0 w-8 h-8 rounded-full border-2 border-gray-900 border-t-transparent animate-spin" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{SANDBOX_PHASE_LABELS[sandboxPhase]}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5" style={{ fontFamily: MONO }}>
+                          {sandboxPhase === 'validating' && 'Checking address format...'}
+                          {sandboxPhase === 'fetching' && 'Reading Meteora DBC pool state via Helius RPC...'}
+                          {sandboxPhase === 'analyzing' && 'Computing score from curve progress + holders + security...'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Progress steps */}
+                    <div className="flex items-center gap-1 mt-4">
+                      {(['validating', 'fetching', 'analyzing'] as SandboxPhase[]).map((step, i) => {
+                        const stepPhases: SandboxPhase[] = ['validating', 'fetching', 'analyzing']
+                        const currentIdx = stepPhases.indexOf(sandboxPhase)
+                        const done = i < currentIdx
+                        const active = i === currentIdx
+                        return (
+                          <div
+                            key={step}
+                            className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
+                              done ? 'bg-gray-900' : active ? 'bg-gray-400' : 'bg-gray-200'
+                            }`}
+                          />
+                        )
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* ── Sandbox Error ── */}
+            <AnimatePresence>
+              {sandboxPhase === 'error' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="mb-6"
+                >
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <path d="M3 3l6 6M9 3l-6 6" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-red-900">Analysis failed</p>
+                        <p className="text-xs text-red-700 mt-0.5">{sandboxError}</p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* ── Sandbox Results ── */}
+            <AnimatePresence>
+              {sandboxPhase === 'done' && sandboxAnalysis && (
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="mb-6"
+                >
+                  {/* Token Header */}
+                  <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
+                    <div className="bg-gray-50 px-5 py-4 border-b border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h2 className="text-lg font-bold text-gray-900">{sandboxAnalysis.name}</h2>
+                            <span className="text-sm text-gray-400" style={{ fontFamily: MONO }}>
+                              ${sandboxAnalysis.symbol}
+                            </span>
+                            {sandboxAnalysis.graduated && (
+                              <span className="px-2 py-0.5 text-[10px] font-semibold rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                GRADUATED
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-gray-400 mt-1" style={{ fontFamily: MONO }}>
+                            {sandboxAnalysis.mint}
+                          </p>
+                        </div>
+                        {/* Score Circle */}
+                        <HeroScoreCircle score={sandboxAnalysis.score} />
+                      </div>
+                    </div>
+
+                    {/* Metrics Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-gray-200">
+                      <HeroMetricCell
+                        label="Curve Progress"
+                        value={`${sandboxAnalysis.curveProgress.toFixed(1)}%`}
+                        color={sandboxAnalysis.curveProgress >= 80 ? 'text-emerald-600' : sandboxAnalysis.curveProgress >= 40 ? 'text-blue-600' : 'text-gray-900'}
+                      />
+                      <HeroMetricCell
+                        label="Velocity"
+                        value={sandboxAnalysis.velocity}
+                        color={
+                          sandboxAnalysis.velocity === 'accelerating' ? 'text-emerald-600'
+                            : sandboxAnalysis.velocity === 'steady' ? 'text-blue-600'
+                              : 'text-gray-400'
+                        }
+                      />
+                      <HeroMetricCell
+                        label="Holders"
+                        value={sandboxAnalysis.holderCount > 0 ? `${sandboxAnalysis.holderCount}` : '--'}
+                        sub={sandboxAnalysis.topHolderConcentration > 0 ? `Top: ${sandboxAnalysis.topHolderConcentration}%` : undefined}
+                      />
+                      <HeroMetricCell
+                        label="Security"
+                        value={sandboxAnalysis.safe ? 'Safe' : 'Warning'}
+                        color={sandboxAnalysis.safe ? 'text-emerald-600' : 'text-red-500'}
+                        sub={`Score: ${sandboxAnalysis.securityScore}/100`}
+                      />
+                    </div>
+
+                    {/* Curve Progress Bar */}
+                    <div className="px-5 py-4 border-t border-gray-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">
+                          Bonding Curve
+                        </span>
+                        <span className="text-xs font-medium text-gray-600" style={{ fontFamily: MONO }}>
+                          {sandboxAnalysis.curveProgress.toFixed(1)}% / 100%
+                        </span>
+                      </div>
+                      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.min(sandboxAnalysis.curveProgress, 100)}%` }}
+                          transition={{ duration: 1, ease: 'easeOut' }}
+                          className={`h-full rounded-full ${
+                            sandboxAnalysis.curveProgress >= 90 ? 'bg-emerald-500'
+                              : sandboxAnalysis.curveProgress >= 60 ? 'bg-blue-500'
+                                : sandboxAnalysis.curveProgress >= 30 ? 'bg-amber-400'
+                                  : 'bg-gray-300'
+                          }`}
+                        />
+                      </div>
+                      {sandboxAnalysis.curveProgress >= 85 && !sandboxAnalysis.graduated && (
+                        <p className="text-[11px] text-emerald-600 font-medium mt-1.5">
+                          Near graduation threshold -- bonding curve almost full
+                        </p>
+                      )}
+                    </div>
+
+                    {/* AI Reasoning */}
+                    <div className="px-5 py-4 border-t border-gray-200 bg-gray-50">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-5 h-5 rounded bg-gray-900 flex items-center justify-center">
+                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                            <circle cx="5" cy="5" r="2" fill="white" />
+                            <circle cx="5" cy="5" r="4" stroke="white" strokeWidth="0.8" />
+                          </svg>
+                        </div>
+                        <span className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">
+                          AI Analysis
+                        </span>
+                        <span className={`ml-auto px-2 py-0.5 text-[10px] font-semibold rounded ${
+                          sandboxAnalysis.prediction === 'will_graduate' ? 'bg-emerald-50 text-emerald-700'
+                            : sandboxAnalysis.prediction === 'watching' ? 'bg-blue-50 text-blue-700'
+                              : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {sandboxAnalysis.prediction === 'will_graduate' ? 'Likely Graduate'
+                            : sandboxAnalysis.prediction === 'watching' ? 'Watching'
+                              : 'Unlikely'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {sandboxAnalysis.reasoning}
+                      </p>
+                    </div>
+
+                    {/* Pool info */}
+                    {sandboxAnalysis.poolAddress && (
+                      <div className="px-5 py-3 border-t border-gray-200 flex items-center justify-between">
+                        <span className="text-[11px] text-gray-400">
+                          Pool: <span style={{ fontFamily: MONO }}>{sandboxAnalysis.poolAddress.substring(0, 16)}...</span>
+                        </span>
+                        {sandboxAnalysis.tweetUrl && (
+                          <a
+                            href={sandboxAnalysis.tweetUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] text-blue-600 hover:underline"
+                          >
+                            View original tweet
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SDK Attribution */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                    className="bg-gray-50 border border-gray-200 rounded-lg p-5 text-center"
+                  >
+                    <p className="text-xs text-gray-500">
+                      Powered by the <span className="font-semibold text-gray-900">TrendSurfer SDK</span>.
+                      Run this same analysis in your own agent:
+                    </p>
+                    <div className="mt-3 flex items-center justify-center gap-2">
+                      <code
+                        className="px-3 py-1.5 bg-white border border-gray-200 rounded text-xs text-gray-700"
+                        style={{ fontFamily: MONO }}
+                      >
+                        npm install trendsurfer-skill
+                      </code>
+                      <button
+                        onClick={handleSdkCopy}
+                        className="px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded hover:bg-gray-800 transition-colors"
+                      >
+                        {sdkCopied ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-center gap-3 mt-3">
+                      <Link href="/developers" className="text-[11px] text-blue-600 hover:underline">
+                        Read the docs
+                      </Link>
+                      <span className="text-gray-300">|</span>
+                      <Link href="/developers#x402-api" className="text-[11px] text-blue-600 hover:underline">
+                        x402 API -- $0.001/call
+                      </Link>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* ── Animated Bonding Curve (accent, smaller) ── */}
+          <AnimatePresence>
+            {sandboxPhase === 'idle' && !sandboxAnalysis && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+                className="max-w-md mx-auto mb-10"
+              >
+                <HeroBondingCurve />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Stat counters */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto mb-10">
@@ -281,15 +700,9 @@ export default function Dashboard() {
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link
-              href="/sandbox"
-              className="px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
-            >
-              Try the Sandbox
-            </Link>
             <a
               href="#scanner"
-              className="px-5 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+              className="px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
             >
               View Scanner
             </a>
@@ -703,6 +1116,64 @@ export default function Dashboard() {
 }
 
 // ────────────────────────────────────────────────────────────────────────────────
+// Hero Score Circle (for sandbox results)
+// ────────────────────────────────────────────────────────────────────────────────
+
+function HeroScoreCircle({ score }: { score: number }) {
+  const color = score >= 75 ? '#059669' : score >= 40 ? '#d97706' : '#9ca3af'
+  const r = 32
+  const circ = 2 * Math.PI * r
+  const dash = (score / 100) * circ
+
+  return (
+    <div className="relative flex-shrink-0">
+      <svg width="76" height="76" viewBox="0 0 76 76">
+        <circle cx="38" cy="38" r={r} fill="none" stroke="#f3f4f6" strokeWidth="4" />
+        <motion.circle
+          cx="38" cy="38" r={r} fill="none" stroke={color} strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={`${dash} ${circ}`}
+          transform="rotate(-90 38 38)"
+          initial={{ strokeDasharray: `0 ${circ}` }}
+          animate={{ strokeDasharray: `${dash} ${circ}` }}
+          transition={{ duration: 1, ease: 'easeOut' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-xl font-bold" style={{ color, fontFamily: MONO }}>{score}</span>
+        <span className="text-[9px] text-gray-400">/100</span>
+      </div>
+    </div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────────────────
+// Hero Metric Cell (for sandbox results)
+// ────────────────────────────────────────────────────────────────────────────────
+
+function HeroMetricCell({
+  label,
+  value,
+  color = 'text-gray-900',
+  sub,
+}: {
+  label: string
+  value: string
+  color?: string
+  sub?: string
+}) {
+  return (
+    <div className="px-5 py-4">
+      <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">{label}</p>
+      <p className={`text-lg font-bold mt-0.5 ${color}`} style={{ fontFamily: MONO }}>
+        {value}
+      </p>
+      {sub && <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>}
+    </div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────────────────
 // Hero Bonding Curve SVG - THE SIGNATURE VISUAL
 // ────────────────────────────────────────────────────────────────────────────────
 
@@ -754,7 +1225,7 @@ function HeroBondingCurve() {
 
   // Build curve points
   const W = 480
-  const H = 160
+  const H = 140
   const PAD = 24
   const STEPS = 60
   const curvePoints: [number, number][] = []
@@ -767,7 +1238,6 @@ function HeroBondingCurve() {
 
   // Graduation threshold line x position (at 90% fill)
   const threshX = PAD + 0.9 * (W - PAD * 2)
-  const threshTopY = H - PAD - Math.sqrt(0.9) * (H - PAD * 2)
 
   return (
     <div className="relative">
@@ -775,7 +1245,7 @@ function HeroBondingCurve() {
         ref={ref}
         viewBox={`0 0 ${W} ${H}`}
         className="w-full"
-        style={{ maxHeight: '200px' }}
+        style={{ maxHeight: '160px' }}
       >
         {/* Background grid lines */}
         {[0.25, 0.5, 0.75].map((frac) => (
@@ -840,9 +1310,9 @@ function HeroBondingCurve() {
       </svg>
 
       {/* Phase indicator */}
-      <div className="flex items-center justify-center gap-3 mt-3">
+      <div className="flex items-center justify-center gap-3 mt-2">
         <motion.div
-          className={`text-sm font-semibold ${phaseColor[phase]}`}
+          className={`text-xs font-semibold ${phaseColor[phase]}`}
           key={phase}
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
@@ -855,9 +1325,9 @@ function HeroBondingCurve() {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4, type: 'spring' }}
-            className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-full border border-emerald-200"
+            className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-semibold rounded-full border border-emerald-200"
           >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
               <path d="M2.5 6l2.5 2.5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             GRADUATED
@@ -1114,6 +1584,9 @@ function ScannerTokenRow({
     stagnant: 'text-gray-400',
   }
 
+  // suppress unused variable warning
+  void index
+
   return (
     <motion.div variants={staggerItem}>
       <div
@@ -1319,7 +1792,7 @@ function PredictionCard({ prediction }: { prediction: Prediction }) {
         </div>
       </div>
 
-      {/* AI reasoning — click to expand */}
+      {/* AI reasoning -- click to expand */}
       <button
         onClick={() => setExpanded(!expanded)}
         className="text-left w-full mb-3 group"
