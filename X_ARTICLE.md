@@ -19,8 +19,10 @@ No existing tool answers that question. Until now.
 TrendSurfer is the first intelligence skill for trends.fun. Not a bot. Not a single-purpose agent. A reusable TypeScript SDK and MCP server that gives any AI agent the ability to:
 
 - **Scan** trends.fun token launches in real-time
-- **Analyze** bonding curve graduation probability with on-chain data
+- **Analyze** bonding curve graduation probability with on-chain data + AI reasoning
+- **Analyze tweets** — since every token IS a tokenized tweet, we score social signals (viral/trending/moderate)
 - **Check** token security (honeypot detection, mint authority, freeze risk)
+- **Track graduations** — detect when tokens graduate and measure prediction accuracy
 - **Execute** gasless trades via Bitget Wallet API
 
 Three lines of code. That is all it takes.
@@ -56,13 +58,14 @@ Every trends.fun token sits on a Meteora Dynamic Bonding Curve — a constant-pr
 
 TrendSurfer reads the raw on-chain pool state via Helius RPC and computes:
 
-1. **Curve Progress** — How full is the bonding curve? (0-100%)
-2. **Fill Velocity** — Is the curve filling faster or slower over time? (accelerating / steady / declining / stagnant)
-3. **Holder Distribution** — How concentrated is the token? High concentration = rug risk.
-4. **Security Audit** — Honeypot detection, mint/freeze authority checks via Bitget Wallet API.
-5. **Composite Score** — AI combines all signals into a single 0-100 graduation probability with transparent reasoning.
+1. **Curve Progress** (25%) — How full is the bonding curve? (0-100%)
+2. **Fill Velocity** (30%) — Is the curve filling faster or slower over time? Exponential backoff protects RPC limits.
+3. **Social Signal** (15%) — Since tokens ARE tweets, we derive virality from holder count + curve momentum. Viral tweets from high-follower authors graduate faster.
+4. **Security Audit** (20%) — Honeypot detection, mint/freeze authority checks via Bitget Wallet API.
+5. **Holder Distribution** (10%) — How concentrated is the token? High concentration = rug risk.
+6. **AI Reasoning** — Gemini Flash analyzes all signals including tweet content and produces natural language reasoning.
 
-This is not speculation. It is math. The bonding curve is deterministic — if enough tokens are bought, graduation happens. TrendSurfer measures how close that threshold is and how fast the market is approaching it.
+The composite score blends on-chain math with AI judgment. The bonding curve is deterministic — if enough tokens are bought, graduation happens. TrendSurfer measures how close that threshold is, how fast the market is approaching it, and whether the tweet content suggests the momentum will continue.
 
 [SCREENSHOT: Sandbox showing a token analysis with score circle, curve progress bar, and AI reasoning]
 
@@ -70,17 +73,24 @@ This is not speculation. It is math. The bonding curve is deterministic — if e
 
 TrendSurfer is a full-stack intelligence platform. Here is every layer:
 
-**The SDK** (`trendsurfer-skill` on npm) — 6 core functions: `scanLaunches`, `analyzeGraduation`, `checkSecurity`, `getQuote`, `executeTrade`, `getTradeStatus`. Published, versioned, documented. Any developer can install it and have trends.fun intelligence in their agent within minutes.
+**The SDK** (`trendsurfer-skill` on npm v0.3.0) — 6 core functions: `scanLaunches`, `analyzeGraduation`, `checkSecurity`, `getQuote`, `executeTrade`, `getTradeStatus`. Published, versioned, documented. Any developer can install it and have trends.fun intelligence in their agent within minutes.
 
-**The MCP Server** (`trendsurfer-mcp` on npm) — Wraps the SDK as 6 MCP tools. Works with Claude Desktop, Cursor, or any MCP-compatible agent framework. No vendor lock-in.
+**The MCP Server** (`trendsurfer-mcp` on npm v0.3.0) — Wraps the SDK as 6 MCP tools. Works with Claude Desktop, Cursor, or any MCP-compatible agent framework. No vendor lock-in.
 
 **The x402 API** — Our `/api/intelligence` endpoint implements the x402 micropayment protocol (by Coinbase). Pay $0.001 USDC per analysis call. No API keys. No signup. Just HTTP with a payment header. This is how agent-to-agent commerce should work.
 
-**The Interactive Sandbox** — Paste any Solana token mint address and get a live graduation analysis in seconds. Real on-chain data, real scoring, real AI reasoning. Judges: try it yourself at [solana-trends-agent.vercel.app/sandbox](https://solana-trends-agent.vercel.app/sandbox).
+**The Interactive Sandbox** — Paste any Solana token mint address and get a live graduation analysis in seconds. Real on-chain data, AI-enhanced scoring (Gemini Flash), tweet content analysis, social signal detection, Solscan links. Shareable URLs let you share analysis results. Judges: try it yourself at [solana-trends-agent.vercel.app](https://solana-trends-agent.vercel.app).
 
-**The Autonomous Agent** — A trading agent that uses TrendSurfer's own skill to scan, analyze, and trade trends.fun tokens 24/7. It runs a continuous loop: scan launches, score each token, buy above threshold via Bitget Wallet (gasless), monitor for graduation, sell after migration. Every decision is logged with full AI reasoning.
+**The Autonomous Agent** — A trading agent that uses TrendSurfer's own skill to scan, analyze, and trade trends.fun tokens 24/7. It runs a continuous loop: scan launches, score each token, buy above threshold via Bitget Wallet (gasless), monitor for graduation, sell after migration. It also detects graduation events and tracks prediction accuracy.
 
-**The Dashboard** — A Next.js app showing the live token feed, graduation scores, AI prediction cards with reasoning, trade history, and PnL tracking. Clean white design, Framer Motion animations, mobile responsive.
+**The Dashboard** — A Next.js app showing:
+- **Agent Live Decisions** — see what the agent is watching and thinking in real-time
+- **Graduation Tracker** — verified graduations with prediction accuracy stats
+- **Live Scanner** — real-time token feed with bonding curve progress
+- **Trading Performance** — PnL chart, win rate, trade history
+- **Tweet Analysis** — social signal scoring (viral/trending/moderate/low)
+
+Clean white design, Framer Motion animations, mobile responsive.
 
 [SCREENSHOT: Dashboard showing token feed with graduation progress bars and prediction cards]
 
@@ -117,11 +127,15 @@ The skill talks to Solana (Helius RPC for on-chain Meteora DBC data), Bitget Wal
 
 **Gasless Trading** — Bitget Wallet's swap API deducts gas from the input token. Zero SOL balance required. This removes the biggest friction point for autonomous agents.
 
-**Real On-Chain Data** — We deserialize Meteora DBC pool accounts directly. No third-party APIs, no scrapers. The bonding curve state is the source of truth.
+**Real On-Chain Data** — We deserialize Meteora DBC pool accounts directly via Helius RPC. No third-party APIs, no scrapers. The bonding curve state is the source of truth. Smart RPC routing uses public Solana RPC for heavy `getProgramAccounts` and Helius for fast single-account reads.
+
+**Tweet-Aware Intelligence** — Since trends.fun tokens ARE tokenized tweets, we extract tweet content and author from on-chain metadata and score social signals. Viral tweets from influential authors graduate faster — our scoring model captures this.
 
 **x402 Micropayments** — The intelligence endpoint returns HTTP 402 with payment requirements. Any x402-compatible client can pay and access analysis programmatically. This is native agent-to-agent commerce.
 
 **TypeScript Throughout** — Bitget's official SDK is Python-only. TrendSurfer provides the first TypeScript wrapper for their Wallet API, making it accessible to the massive Node.js/TypeScript agent ecosystem.
+
+**Graduation Event Tracking** — The agent detects when tokens graduate and records prediction accuracy. This builds a verifiable track record over time — not just predictions, but proven outcomes.
 
 ## Try It Right Now
 
@@ -147,8 +161,8 @@ We did not build a trading bot. We built the intelligence layer that makes every
 
 Built by [@AzeemShariq](https://x.com/AzeemShariq)
 
-SDK: `npm install trendsurfer-skill` (v0.2.0)
-MCP: `npm install trendsurfer-mcp` (v0.2.0)
+SDK: `npm install trendsurfer-skill` (v0.3.0)
+MCP: `npm install trendsurfer-mcp` (v0.3.0)
 Dashboard: [solana-trends-agent.vercel.app](https://solana-trends-agent.vercel.app)
 Sandbox: [solana-trends-agent.vercel.app/sandbox](https://solana-trends-agent.vercel.app/sandbox)
 GitHub: [github.com/shariqazeem/trendsurfer](https://github.com/shariqazeem/trendsurfer)

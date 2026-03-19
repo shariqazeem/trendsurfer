@@ -1,11 +1,14 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
+import { useSearchParams, useRouter } from 'next/navigation'
 
 // ── Constants ──
 const MONO = "'SF Mono', 'Fira Code', 'JetBrains Mono', monospace"
+const HISTORY_KEY = 'trendsurfer_analysis_history'
+const MAX_HISTORY = 5
 
 interface Analysis {
   mint: string
@@ -33,6 +36,14 @@ interface Analysis {
   }
 }
 
+interface HistoryItem {
+  mint: string
+  symbol: string
+  name: string
+  score: number
+  analyzedAt: number
+}
+
 type Phase = 'idle' | 'validating' | 'fetching' | 'analyzing' | 'done' | 'error'
 
 const PHASE_LABELS: Record<Phase, string> = {
@@ -50,20 +61,75 @@ const EXAMPLES = [
   { label: 'Try: $AGNT (37% curve)', mint: 'Bie3j6rvTK1t1vJ1qTo1YnvS1AjZfwg8f1XQ2Cq2BAGS' },
 ]
 
+// ── History helpers ──
+function loadHistory(): HistoryItem[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function saveToHistory(item: HistoryItem) {
+  const history = loadHistory().filter((h) => h.mint !== item.mint)
+  history.unshift(item)
+  if (history.length > MAX_HISTORY) history.pop()
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history))
+  return history
+}
+
+function formatTimeAgo(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
+// ── Wrapper with Suspense for useSearchParams ──
 export default function SandboxPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+      </div>
+    }>
+      <SandboxContent />
+    </Suspense>
+  )
+}
+
+function SandboxContent() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [mint, setMint] = useState('')
   const [phase, setPhase] = useState<Phase>('idle')
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
+  const [shareCopied, setShareCopied] = useState(false)
+  const [history, setHistory] = useState<HistoryItem[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+  const autoAnalyzeRef = useRef(false)
 
-  const handleAnalyze = async () => {
-    const trimmed = mint.trim()
+  // Load history on mount
+  useEffect(() => {
+    setHistory(loadHistory())
+  }, [])
+
+  const handleAnalyze = useCallback(async (mintOverride?: string) => {
+    const trimmed = (mintOverride || mint).trim()
     if (!trimmed) {
       inputRef.current?.focus()
       return
     }
+
+    if (mintOverride) setMint(trimmed)
 
     setPhase('validating')
     setAnalysis(null)
@@ -98,16 +164,51 @@ export default function SandboxPage() {
 
       setAnalysis(data.analysis)
       setPhase('done')
+
+      // Save to history
+      const newHistory = saveToHistory({
+        mint: data.analysis.mint,
+        symbol: data.analysis.symbol,
+        name: data.analysis.name,
+        score: data.analysis.score,
+        analyzedAt: Date.now(),
+      })
+      setHistory(newHistory)
+
+      // Update URL to shareable form without triggering navigation
+      router.replace(`/sandbox?mint=${trimmed}`, { scroll: false })
     } catch {
       setError('Network error — could not reach the analysis server.')
       setPhase('error')
     }
-  }
+  }, [mint, router])
+
+  // Auto-analyze if ?mint= is present on page load
+  useEffect(() => {
+    const mintParam = searchParams.get('mint')
+    if (mintParam && !autoAnalyzeRef.current) {
+      autoAnalyzeRef.current = true
+      setMint(mintParam)
+      handleAnalyze(mintParam)
+    }
+  }, [searchParams, handleAnalyze])
 
   const handleCopy = () => {
     navigator.clipboard.writeText('npm install trendsurfer-skill')
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleShareCopy = () => {
+    const url = `${window.location.origin}/sandbox?mint=${analysis?.mint || mint.trim()}`
+    navigator.clipboard.writeText(url)
+    setShareCopied(true)
+    setTimeout(() => setShareCopied(false), 2000)
+  }
+
+  const handleHistoryClick = (item: HistoryItem) => {
+    setMint(item.mint)
+    handleAnalyze(item.mint)
   }
 
   const isLoading = phase === 'validating' || phase === 'fetching' || phase === 'analyzing'
@@ -457,7 +558,7 @@ export default function SandboxPage() {
                   </div>
                 )}
 
-                {/* Links */}
+                {/* Links + Share */}
                 <div className="px-5 py-3 border-t border-gray-200 flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-3">
                     <a
@@ -489,9 +590,28 @@ export default function SandboxPage() {
                       </a>
                     )}
                   </div>
-                  <span className="text-[10px] text-gray-400" style={{ fontFamily: MONO }}>
-                    {analysis.poolAddress ? `${analysis.poolAddress.substring(0, 12)}...` : analysis.mint.substring(0, 12) + '...'}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-gray-400" style={{ fontFamily: MONO }}>
+                      {analysis.poolAddress ? `${analysis.poolAddress.substring(0, 12)}...` : analysis.mint.substring(0, 12) + '...'}
+                    </span>
+                    <button
+                      onClick={handleShareCopy}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-md hover:border-gray-300 hover:bg-gray-50 transition-colors"
+                    >
+                      {shareCopied ? (
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <path d="M2 6l3 3 5-5" stroke="#059669" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      ) : (
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="text-gray-500">
+                          <path d="M4 12v1a2 2 0 002 2h6a2 2 0 002-2V6a2 2 0 00-2-2h-1M2 10h6a2 2 0 002-2V3a2 2 0 00-2-2H2a1 1 0 00-1 1v7a1 1 0 001 1z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                      <span className="text-[11px] font-medium text-gray-600">
+                        {shareCopied ? 'Link copied!' : 'Share'}
+                      </span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -568,6 +688,62 @@ export default function SandboxPage() {
                 </code>{' '}
                 on npm. Every analysis you see here can be replicated in your own agent with 3 lines of code.
               </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Recent Analyses */}
+        {history.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: phase === 'done' ? 0.4 : 0.3 }}
+            className="mt-8"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs uppercase tracking-wider text-gray-400 font-medium">
+                Recent Analyses
+              </h3>
+              <span className="text-[10px] text-gray-300">{history.length}/{MAX_HISTORY}</span>
+            </div>
+            <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 overflow-hidden">
+              {history.map((item) => {
+                const scoreColor = item.score >= 75 ? 'text-emerald-600' : item.score >= 40 ? 'text-amber-600' : 'text-gray-400'
+                const isActive = analysis?.mint === item.mint && phase === 'done'
+                return (
+                  <button
+                    key={item.mint}
+                    onClick={() => handleHistoryClick(item)}
+                    disabled={isLoading}
+                    className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center gap-3 ${
+                      isActive ? 'bg-gray-50' : ''
+                    }`}
+                  >
+                    <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                      <span className={`text-sm font-bold ${scoreColor}`} style={{ fontFamily: MONO }}>
+                        {item.score}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-gray-900 truncate">{item.name}</span>
+                        <span className="text-[11px] text-gray-400 flex-shrink-0" style={{ fontFamily: MONO }}>
+                          ${item.symbol}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-0.5 truncate" style={{ fontFamily: MONO }}>
+                        {item.mint.substring(0, 16)}...{item.mint.substring(item.mint.length - 6)}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <p className="text-[10px] text-gray-400">{formatTimeAgo(item.analyzedAt)}</p>
+                      {isActive && (
+                        <span className="text-[9px] text-blue-500 font-medium">viewing</span>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </motion.div>
         )}

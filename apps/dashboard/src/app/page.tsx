@@ -402,6 +402,20 @@ export default function Dashboard() {
             </p>
           </motion.div>
 
+          {/* Live Stats Ticker */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+            className="flex items-center justify-center gap-6 mb-6"
+          >
+            <LiveTickerStat label="tokens scanned" value={status?.tokensScanned || 0} />
+            <div className="w-px h-4 bg-gray-200" />
+            <LiveTickerStat label="predictions" value={predictions.length} />
+            <div className="w-px h-4 bg-gray-200" />
+            <LiveTickerStat label="graduations" value={graduationStats.total} />
+          </motion.div>
+
           {/* ── Sandbox Input Area ── */}
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -2413,6 +2427,37 @@ function SectionInView({ children }: { children: React.ReactNode }) {
     >
       {children}
     </motion.div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────────────────
+// Live Ticker Stat (animated counter)
+// ────────────────────────────────────────────────────────────────────────────────
+
+function LiveTickerStat({ label, value }: { label: string; value: number }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const motionVal = useMotionValue(0)
+  const inView = useInView(ref as React.RefObject<Element>, { once: true })
+
+  useEffect(() => {
+    if (!inView || value === 0) return
+    const ctrl = animate(motionVal, value, {
+      duration: 1.2,
+      ease: 'easeOut',
+      onUpdate: (v) => {
+        if (ref.current) ref.current.textContent = Math.round(v).toLocaleString()
+      },
+    })
+    return ctrl.stop
+  }, [inView, value, motionVal])
+
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+      <span ref={ref} className="font-semibold text-gray-900 tabular-nums" style={{ fontFamily: MONO }}>
+        {value === 0 ? '\u2014' : '0'}
+      </span>
+      <span>{label}</span>
+    </div>
   )
 }
 
