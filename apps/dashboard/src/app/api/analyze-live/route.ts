@@ -7,6 +7,7 @@ import { Connection, PublicKey } from '@solana/web3.js'
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY || ''
 const HELIUS_RPC_URL =
   process.env.HELIUS_RPC_URL || `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
+const PUBLIC_RPC_URL = 'https://api.mainnet-beta.solana.com'
 
 const METEORA_DBC_PROGRAM = 'dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN'
 const VIRTUAL_POOL_DISC = 'd5e005d16245775c'
@@ -75,11 +76,22 @@ interface AnalysisResult {
   tweetAuthor?: string
 }
 
-async function analyzeMint(mint: string): Promise<AnalysisResult> {
-  const conn = new Connection(HELIUS_RPC_URL, 'confirmed')
+async function getConnection(): Promise<Connection> {
+  // Try Helius first, fallback to public RPC if rate-limited
+  const helius = new Connection(HELIUS_RPC_URL, 'confirmed')
+  try {
+    await helius.getSlot()
+    return helius
+  } catch {
+    console.log('Helius rate-limited, falling back to public RPC')
+    return new Connection(PUBLIC_RPC_URL, 'confirmed')
+  }
+}
 
-  // 1. Find the pool for this mint by checking recent DBC program activity
-  //    Or check if the mint itself has an associated pool
+async function analyzeMint(mint: string): Promise<AnalysisResult> {
+  const conn = await getConnection()
+
+  // 1. Find the pool for this mint
   const mintPk = new PublicKey(mint)
 
   // First: try to get token metadata from Helius DAS
@@ -113,7 +125,18 @@ async function analyzeMint(mint: string): Promise<AnalysisResult> {
       if (authorMatch) tweetAuthor = authorMatch[1]
     }
   } catch {
-    // Metadata fetch failed — continue with defaults
+    // Helius DAS failed — try Bitget for token info
+    try {
+      const info = await bitgetPost('/market/v3/coin/batchGetBaseInfo', {
+        list: [{ chain: 'sol', contract: mint }],
+      })
+      if (info?.[0]) {
+        name = info[0].tokenName || info[0].name || name
+        symbol = info[0].tokenSymbol || info[0].symbol || symbol
+      }
+    } catch {
+      // Both failed — continue with defaults
+    }
   }
 
   // 2. Find the Meteora DBC pool for this mint
