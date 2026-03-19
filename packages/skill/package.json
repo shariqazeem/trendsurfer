@@ -1,7 +1,7 @@
 {
   "name": "trendsurfer-skill",
-  "version": "0.2.0",
-  "description": "The first intelligence skill for trends.fun — graduation prediction, bonding curve analysis, and trade execution for Solana AI agents",
+  "version": "0.3.0",
+  "description": "The intelligence skill for trends.fun — graduation prediction, bonding curve analysis, security checks, and trade execution for Solana's tokenized tweet platform",
   "author": "TrendSurfer <https://github.com/shariqazeem/trendsurfer>",
   "license": "MIT",
   "repository": {
@@ -14,16 +14,15 @@
     "url": "https://github.com/shariqazeem/trendsurfer/issues"
   },
   "keywords": [
-    "solana",
-    "trends.fun",
     "trendsurfer",
-    "bonding-curve",
-    "graduation-prediction",
+    "trends.fun",
+    "solana",
     "meteora",
-    "ai-agent",
+    "bonding-curve",
+    "graduation",
     "mcp",
+    "ai-agent",
     "trading",
-    "defi",
     "bitget"
   ],
   "main": "dist/index.js",

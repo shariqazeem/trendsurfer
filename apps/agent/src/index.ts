@@ -14,6 +14,7 @@ import { analyzeWithClaude } from './claude'
 import { evaluateTrade, checkExitConditions, recordTradeTimestamp, getRiskConfig, updateRiskConfig, type RiskConfig, type ExitDecision } from './risk'
 import {
   initDb,
+  getDb,
   savePrediction,
   savePosition,
   getOpenPositions,
@@ -23,6 +24,8 @@ import {
   getPredictions,
   getAllPositions,
   getLastPrediction,
+  saveGraduationEvent,
+  getGraduationEvents,
 } from './db'
 import { getTokenInfo } from '../../../lib/bitget'
 import { hasWallet, getWalletAddress, signBitgetOrder } from '../../../lib/signer'
@@ -124,6 +127,43 @@ async function runScanCycle(): Promise<void> {
 
     // 2. Refresh existing launches to update curve progress
     const allLaunches = await skill.refreshLaunches()
+
+    // Check for newly graduated tokens
+    for (const launch of allLaunches) {
+      if (launch.graduated) {
+        const lastPred = await getLastPrediction(launch.mint)
+        if (lastPred && lastPred.outcome !== 'graduated') {
+          // This token just graduated! Record the event
+          await saveGraduationEvent({
+            id: randomUUID(),
+            mint: launch.mint,
+            symbol: launch.symbol,
+            name: launch.name,
+            predictedScore: lastPred.score,
+            curveProgressAtPrediction: lastPred.curveProgress,
+            graduatedAt: Date.now(),
+            predictedAt: lastPred.createdAt,
+            timeToGraduate: Date.now() - lastPred.createdAt,
+            wasPredicted: lastPred.prediction === 'will_graduate',
+          })
+
+          // Update the prediction outcome
+          const d = getDb()
+          await d.execute({
+            sql: "UPDATE predictions SET outcome = 'graduated', resolved_at = ? WHERE mint = ? AND outcome = 'pending'",
+            args: [Date.now(), launch.mint],
+          })
+
+          await logAgent('info', `GRADUATION: ${launch.symbol} graduated! Predicted score was ${lastPred.score}/100`, {
+            mint: launch.mint,
+            predictedScore: lastPred.score,
+            wasPredicted: lastPred.prediction === 'will_graduate',
+          })
+
+          console.log(`\n🎓 GRADUATION: ${launch.symbol} graduated! Score was ${lastPred.score}/100 — ${lastPred.prediction === 'will_graduate' ? 'CORRECTLY PREDICTED' : 'missed'}`)
+        }
+      }
+    }
 
     // 3. Analyze tokens with meaningful progress
     // Only analyze tokens above 10% curve to save API credits
@@ -432,7 +472,7 @@ export async function getStatus(): Promise<AgentStatus> {
 
 // ── API for Dashboard ──
 
-export { getPredictions, getAllPositions, getAgentLogs, getTotalPnl, getOpenPositions }
+export { getPredictions, getAllPositions, getAgentLogs, getTotalPnl, getOpenPositions, getGraduationEvents }
 export { getRiskConfig, updateRiskConfig } from './risk'
 
 // ── CLI Entry Point ──

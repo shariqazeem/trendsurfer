@@ -1,7 +1,7 @@
 {
   "name": "trendsurfer-mcp",
-  "version": "0.2.0",
-  "description": "MCP server for TrendSurfer — expose trends.fun intelligence to any AI agent framework",
+  "version": "0.3.0",
+  "description": "MCP server for TrendSurfer — gives any AI agent trends.fun intelligence via Model Context Protocol",
   "author": "TrendSurfer <https://github.com/shariqazeem/trendsurfer>",
   "license": "MIT",
   "repository": {
@@ -14,14 +14,19 @@
     "url": "https://github.com/shariqazeem/trendsurfer/issues"
   },
   "keywords": [
-    "mcp",
-    "model-context-protocol",
-    "solana",
-    "trends.fun",
     "trendsurfer",
-    "ai-agent",
+    "trends.fun",
+    "solana",
+    "meteora",
     "bonding-curve",
-    "trading"
+    "graduation",
+    "mcp",
+    "mcp-server",
+    "ai-agent",
+    "trading",
+    "bitget",
+    "claude",
+    "cursor"
   ],
   "bin": {
     "trendsurfer-mcp": "dist/index.js"

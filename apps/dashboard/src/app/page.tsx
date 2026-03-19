@@ -83,6 +83,43 @@ interface Analysis {
   graduated: boolean
   tweetUrl?: string
   tweetAuthor?: string
+  tweetContent?: string
+  tweetEngagement?: {
+    estimatedViews: string
+    tokenHolders: number
+    socialSignal: 'viral' | 'trending' | 'moderate' | 'low'
+  }
+}
+
+interface AgentDecision {
+  mint: string
+  symbol: string
+  name: string
+  score: number
+  curveProgress: number
+  prediction: string
+  reasoning: string
+  lastUpdated: number
+  action: 'monitoring' | 'ready_to_buy' | 'bought'
+}
+
+interface GraduationEvent {
+  id: string
+  mint: string
+  symbol: string
+  name: string
+  predictedScore: number
+  curveProgressAtPrediction: number
+  graduatedAt: number
+  predictedAt: number
+  timeToGraduate: number
+  wasPredicted: boolean
+}
+
+interface GraduationStats {
+  total: number
+  correctlyPredicted: number
+  accuracy: number
 }
 
 type Filter = 'all' | 'hot' | 'graduating' | 'graduated'
@@ -136,6 +173,13 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
   const [logExpanded, setLogExpanded] = useState(false)
+
+  // Agent decisions state
+  const [agentDecisions, setAgentDecisions] = useState<AgentDecision[]>([])
+
+  // Graduation tracker state
+  const [graduationEvents, setGraduationEvents] = useState<GraduationEvent[]>([])
+  const [graduationStats, setGraduationStats] = useState<GraduationStats>({ total: 0, correctlyPredicted: 0, accuracy: 0 })
 
   // Sandbox state (hero)
   const [sandboxMint, setSandboxMint] = useState('')
@@ -212,9 +256,16 @@ export default function Dashboard() {
       setStatus(agentData)
     } catch {
       /* API not ready */
-    } finally {
-      setLoading(false)
     }
+
+    try {
+      const gradRes = await fetch('/api/graduations')
+      const gradData = await gradRes.json()
+      setGraduationEvents(gradData.events || [])
+      setGraduationStats(gradData.stats || { total: 0, correctlyPredicted: 0, accuracy: 0 })
+    } catch { /* graduations API not ready */ }
+
+    setLoading(false)
   }, [])
 
   useEffect(() => {
@@ -222,6 +273,23 @@ export default function Dashboard() {
     const interval = setInterval(fetchAll, 5000)
     return () => clearInterval(interval)
   }, [fetchAll])
+
+  // Fetch agent decisions every 10s
+  const fetchDecisions = useCallback(async () => {
+    try {
+      const res = await fetch('/api/agent-decisions')
+      const data = await res.json()
+      setAgentDecisions(data.decisions || [])
+    } catch {
+      /* API not ready */
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchDecisions()
+    const interval = setInterval(fetchDecisions, 10000)
+    return () => clearInterval(interval)
+  }, [fetchDecisions])
 
   // Deduplicate predictions by mint
   const uniqueTokens = useMemo(() => {
@@ -595,6 +663,46 @@ export default function Dashboard() {
                       </p>
                     </div>
 
+                    {/* Tweet Analysis */}
+                    {(sandboxAnalysis.tweetContent || sandboxAnalysis.tweetAuthor) && (
+                      <div className="px-5 py-4 border-t border-gray-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-gray-400">
+                            <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          <span className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Tweet Analysis</span>
+                          {sandboxAnalysis.tweetEngagement?.socialSignal && (
+                            <span className={`ml-auto px-2 py-0.5 text-[10px] font-semibold rounded ${
+                              sandboxAnalysis.tweetEngagement.socialSignal === 'viral' ? 'bg-emerald-50 text-emerald-700'
+                                : sandboxAnalysis.tweetEngagement.socialSignal === 'trending' ? 'bg-blue-50 text-blue-700'
+                                  : sandboxAnalysis.tweetEngagement.socialSignal === 'moderate' ? 'bg-amber-50 text-amber-700'
+                                    : 'bg-gray-100 text-gray-500'
+                            }`}>
+                              {sandboxAnalysis.tweetEngagement.socialSignal.toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        {sandboxAnalysis.tweetContent && (
+                          <p className="text-sm text-gray-600 italic leading-relaxed mb-2">
+                            &ldquo;{sandboxAnalysis.tweetContent.length > 200
+                              ? sandboxAnalysis.tweetContent.substring(0, 200) + '...'
+                              : sandboxAnalysis.tweetContent}&rdquo;
+                          </p>
+                        )}
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          {sandboxAnalysis.tweetAuthor && (
+                            <span>Author: <span className="font-medium text-gray-700">@{sandboxAnalysis.tweetAuthor}</span></span>
+                          )}
+                          {sandboxAnalysis.tweetEngagement && (
+                            <>
+                              <span>Est. Views: <span className="font-medium text-gray-700">{sandboxAnalysis.tweetEngagement.estimatedViews}</span></span>
+                              <span>Holders: <span className="font-medium text-gray-700">{sandboxAnalysis.tweetEngagement.tokenHolders}</span></span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Pool info */}
                     {sandboxAnalysis.poolAddress && (
                       <div className="px-5 py-3 border-t border-gray-200 flex items-center justify-between">
@@ -725,6 +833,58 @@ export default function Dashboard() {
       <HowItWorksSection />
 
       {/* ================================================================== */}
+      {/* SECTION 2.5: AGENT LIVE DECISIONS                                   */}
+      {/* ================================================================== */}
+      <section className="bg-white border-b border-gray-200 py-12 sm:py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <SectionInView>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h2 className="text-xl font-semibold text-gray-900">Agent Live Decisions</h2>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-gray-50 border border-gray-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[10px] font-medium text-gray-500">Live</span>
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">What the agent is watching, analyzing, and trading right now</p>
+              </div>
+              <span className="text-[11px] text-gray-400" style={{ fontFamily: MONO }}>
+                {agentDecisions.length} token{agentDecisions.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+
+            {agentDecisions.length === 0 ? (
+              <div className="bg-gray-50 rounded-xl border border-gray-200 p-12 text-center">
+                <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-gray-400">
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" />
+                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M16.36 16.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M16.36 7.64l1.42-1.42" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-gray-900">Agent is scanning for tokens... Check back soon.</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Decisions appear when the agent identifies tokens worth watching
+                </p>
+              </div>
+            ) : (
+              <motion.div
+                variants={staggerContainer}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: '-50px' }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+              >
+                {agentDecisions.map((decision) => (
+                  <AgentDecisionCard key={decision.mint} decision={decision} />
+                ))}
+              </motion.div>
+            )}
+          </SectionInView>
+        </div>
+      </section>
+
+      {/* ================================================================== */}
       {/* SECTION 3: LIVE TOKEN SCANNER                                       */}
       {/* ================================================================== */}
       <section id="scanner" className="bg-white border-b border-gray-200 py-12 sm:py-16">
@@ -819,6 +979,93 @@ export default function Dashboard() {
                   <PredictionCard key={pred.id} prediction={pred} />
                 ))}
               </motion.div>
+            )}
+          </SectionInView>
+        </div>
+      </section>
+
+      {/* ================================================================== */}
+      {/* SECTION 4.5: GRADUATION TRACKER                                     */}
+      {/* ================================================================== */}
+      <section className="bg-white border-b border-gray-200 py-12 sm:py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <SectionInView>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h2 className="text-xl font-semibold text-gray-900">Graduation Tracker</h2>
+                  {graduationStats.total > 0 && (
+                    <span className="px-2.5 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      {graduationStats.accuracy}% accuracy
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500 mt-1">Tracking our graduation predictions vs actual outcomes</p>
+              </div>
+              {graduationStats.total > 0 && (
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-gray-900" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                    {graduationStats.correctlyPredicted}/{graduationStats.total}
+                  </p>
+                  <p className="text-[11px] text-gray-400">correctly predicted</p>
+                </div>
+              )}
+            </div>
+
+            {graduationEvents.length === 0 ? (
+              <div className="bg-gray-50 rounded-xl border border-gray-200 p-12 text-center">
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-emerald-500">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                    <path d="M2 17l10 5 10-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-gray-900">No graduations detected yet</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  When tokens we&apos;re tracking graduate, they&apos;ll appear here with prediction accuracy
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {graduationEvents.map((event) => (
+                  <motion.div
+                    key={event.id}
+                    variants={staggerItem}
+                    className="bg-gray-50 rounded-xl border border-gray-200 px-5 py-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
+                          event.wasPredicted
+                            ? 'bg-emerald-50 text-emerald-600 border-2 border-emerald-200'
+                            : 'bg-amber-50 text-amber-600 border-2 border-amber-200'
+                        }`} style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                          {event.predictedScore}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-gray-900">{event.name || event.symbol}</span>
+                            <span className="text-xs text-gray-400" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                              ${event.symbol}
+                            </span>
+                            <span className={`px-2 py-0.5 text-[10px] font-semibold rounded ${
+                              event.wasPredicted ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                            }`}>
+                              {event.wasPredicted ? 'PREDICTED' : 'MISSED'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Score {event.predictedScore}/100 at {event.curveProgressAtPrediction.toFixed(1)}% curve
+                            {event.timeToGraduate > 0 && ` — graduated in ${Math.round(event.timeToGraduate / 1000 / 60)}m`}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs text-gray-400">{timeAgo(event.graduatedAt)}</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             )}
           </SectionInView>
         </div>
@@ -1820,6 +2067,111 @@ function PredictionCard({ prediction }: { prediction: Prediction }) {
         }`}>
           {prediction.velocity}
         </span>
+      </div>
+    </motion.div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────────────────
+// Agent Decision Card
+// ────────────────────────────────────────────────────────────────────────────────
+
+function AgentDecisionCard({ decision }: { decision: AgentDecision }) {
+  const [expanded, setExpanded] = useState(false)
+
+  const scoreBg =
+    decision.score >= 75
+      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      : decision.score >= 50
+        ? 'bg-amber-50 text-amber-700 border-amber-200'
+        : 'bg-gray-50 text-gray-500 border-gray-200'
+
+  const curveColor =
+    decision.curveProgress >= 90
+      ? 'bg-emerald-500'
+      : decision.curveProgress >= 60
+        ? 'bg-blue-500'
+        : decision.curveProgress >= 30
+          ? 'bg-amber-400'
+          : 'bg-gray-300'
+
+  const actionConfig: Record<string, { label: string; dotColor: string; textColor: string }> = {
+    monitoring: { label: 'Monitoring', dotColor: 'bg-amber-400', textColor: 'text-amber-600' },
+    ready_to_buy: { label: 'Ready to Buy', dotColor: 'bg-emerald-500', textColor: 'text-emerald-600' },
+    bought: { label: 'Bought', dotColor: 'bg-blue-500', textColor: 'text-blue-600' },
+  }
+  const action = actionConfig[decision.action] || actionConfig.monitoring
+
+  return (
+    <motion.div variants={staggerItem}>
+      <div className="border border-gray-200 rounded-xl bg-white hover:shadow-sm transition-shadow">
+        {/* Header */}
+        <div className="bg-gray-50 px-4 py-3 rounded-t-xl border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-gray-900 truncate">{decision.name}</h3>
+                <span className="text-xs text-gray-400" style={{ fontFamily: MONO }}>${decision.symbol}</span>
+              </div>
+            </div>
+            <span
+              className={`px-2 py-0.5 text-xs font-bold rounded-md border ${scoreBg}`}
+              style={{ fontFamily: MONO }}
+            >
+              {decision.score}
+            </span>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="px-4 py-3">
+          {/* Action indicator */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full animate-pulse ${action.dotColor}`} />
+              <span className={`text-xs font-medium ${action.textColor}`}>{action.label}</span>
+            </div>
+            <span className="text-[11px] text-gray-400">{timeAgo(decision.lastUpdated)}</span>
+          </div>
+
+          {/* Curve progress mini-bar */}
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Curve</span>
+              <span className="text-[11px] font-medium text-gray-600" style={{ fontFamily: MONO }}>
+                {decision.curveProgress.toFixed(1)}%
+              </span>
+            </div>
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <motion.div
+                className={`h-full rounded-full ${curveColor}`}
+                initial={{ width: 0 }}
+                whileInView={{ width: `${Math.min(decision.curveProgress, 100)}%` }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, ease: 'easeOut' }}
+              />
+            </div>
+          </div>
+
+          {/* Reasoning */}
+          <button onClick={() => setExpanded(!expanded)} className="text-left w-full group">
+            <p className={`text-xs text-gray-500 leading-relaxed ${expanded ? '' : 'line-clamp-2'}`}>
+              {decision.reasoning || 'Analyzing token...'}
+            </p>
+            {decision.reasoning && decision.reasoning.length > 80 && (
+              <span className="text-[10px] text-blue-600 group-hover:text-blue-700 mt-1 inline-block">
+                {expanded ? 'Show less' : 'Read reasoning'}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Footer */}
+        <div className="px-4 py-2 border-t border-gray-100">
+          <span className="text-[10px] text-gray-400 truncate block" style={{ fontFamily: MONO }}>
+            {decision.mint}
+          </span>
+        </div>
       </div>
     </motion.div>
   )

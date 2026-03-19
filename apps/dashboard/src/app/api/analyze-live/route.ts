@@ -74,6 +74,12 @@ interface AnalysisResult {
   graduated: boolean
   tweetUrl?: string
   tweetAuthor?: string
+  tweetContent?: string
+  tweetEngagement?: {
+    estimatedViews: string
+    tokenHolders: number
+    socialSignal: 'viral' | 'trending' | 'moderate' | 'low'
+  }
 }
 
 function getHeliusConnection(): Connection {
@@ -98,6 +104,7 @@ async function analyzeMint(mint: string): Promise<AnalysisResult> {
   let symbol = 'UNK'
   let tweetUrl: string | undefined
   let tweetAuthor: string | undefined
+  let tweetContent: string | undefined
 
   try {
     const dasRes = await fetch(HELIUS_RPC_URL, {
@@ -122,6 +129,10 @@ async function analyzeMint(mint: string): Promise<AnalysisResult> {
       const desc = asset.content?.metadata?.description || ''
       const authorMatch = desc.match(/@(\w+)/)
       if (authorMatch) tweetAuthor = authorMatch[1]
+      // Extract tweet content from DAS description (often contains the tweet text)
+      if (desc && desc.length > 10) {
+        tweetContent = desc
+      }
     }
   } catch {
     // Helius DAS failed — try Bitget for token info
@@ -235,17 +246,45 @@ async function analyzeMint(mint: string): Promise<AnalysisResult> {
     // Security check failed — neutral score
   }
 
-  // 7. Calculate composite score
+  // 7. Social signal analysis (trends.fun tokens are tokenized tweets)
   const velocityScore = 20 // No history for single-shot analysis
   const velocity = curveProgress >= 80 ? 'accelerating' : curveProgress >= 40 ? 'steady' : 'stagnant'
 
+  // Determine social signal based on holder count + curve velocity
+  // More holders = more viral tweet; faster curve fill = more social momentum
+  let socialSignal: 'viral' | 'trending' | 'moderate' | 'low' = 'low'
+  let socialSignalScore = 20
+  if (holderCount >= 50 && curveProgress >= 60) {
+    socialSignal = 'viral'
+    socialSignalScore = 100
+  } else if (holderCount >= 20 && curveProgress >= 30) {
+    socialSignal = 'trending'
+    socialSignalScore = 75
+  } else if (holderCount >= 8 || curveProgress >= 15) {
+    socialSignal = 'moderate'
+    socialSignalScore = 50
+  }
+
+  // Estimate views from holder count (rough heuristic: each holder ~50-200 viewers)
+  const estimatedViews = holderCount > 0
+    ? `${(holderCount * 120).toLocaleString()}+`
+    : 'Unknown'
+
+  const tweetEngagement = {
+    estimatedViews,
+    tokenHolders: holderCount,
+    socialSignal,
+  }
+
+  // Calculate composite score with social signal weight
   const holderDistScore = Math.max(0, 100 - topHolderConcentration)
   const score = Math.round(
     Math.min(100, Math.max(0,
-      curveProgress * 0.30 +
-      velocityScore * 0.35 +
-      securityScore * 0.25 +
-      holderDistScore * 0.10
+      curveProgress * 0.25 +
+      velocityScore * 0.30 +
+      securityScore * 0.20 +
+      holderDistScore * 0.10 +
+      socialSignalScore * 0.15
     ))
   )
 
@@ -258,7 +297,14 @@ async function analyzeMint(mint: string): Promise<AnalysisResult> {
   if (holderCount > 0) parts.push(`${holderCount} holders detected. Top holder owns ${topHolderConcentration}% of supply.`)
   if (safe) parts.push('Security audit passed — no honeypot or authority risks detected.')
   else parts.push('Security warning — potential risks detected.')
+
+  // Tweet analysis in reasoning
+  if (tweetContent) {
+    const truncated = tweetContent.length > 100 ? tweetContent.substring(0, 100) + '...' : tweetContent
+    parts.push(`Tweet content: '${truncated}'`)
+  }
   if (tweetAuthor) parts.push(`Token linked to @${tweetAuthor} tweet.`)
+  parts.push(`Social signal: ${socialSignal.toUpperCase()} (est. ${estimatedViews} views, ${holderCount} holders).`)
   parts.push(`Overall score: ${score}/100 — ${score >= 75 ? 'HIGH' : score >= 40 ? 'MODERATE' : 'LOW'} graduation probability.`)
 
   const prediction = score >= 75 ? 'will_graduate' : score >= 40 ? 'watching' : 'unlikely'
@@ -281,6 +327,8 @@ async function analyzeMint(mint: string): Promise<AnalysisResult> {
     graduated: isMigrated,
     tweetUrl,
     tweetAuthor,
+    tweetContent,
+    tweetEngagement,
   }
 }
 

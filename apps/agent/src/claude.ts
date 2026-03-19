@@ -26,7 +26,7 @@ function getModel(): string {
   return process.env.COMMONSTACK_MODEL || DEFAULT_MODEL
 }
 
-const SYSTEM_PROMPT = `You predict trends.fun token graduations. Tokens are tokenized tweets on Meteora DBC (Solana). When bonding curve fills → graduates to DEX → price jumps. Respond with JSON only: {"score": 0-100, "reasoning": "2 sentences", "prediction": "will_graduate|unlikely|watching"}`
+const SYSTEM_PROMPT = `You predict trends.fun token graduations. Tokens are tokenized tweets on Meteora DBC (Solana). When bonding curve fills → graduates to DEX → price jumps. Tweet quality matters — viral tweets from influential authors graduate faster. Respond with JSON only: {"score": 0-100, "reasoning": "2 sentences", "prediction": "will_graduate|unlikely|watching"}`
 
 export async function analyzeWithClaude(
   launch: TokenLaunch,
@@ -37,6 +37,16 @@ export async function analyzeWithClaude(
   reasoning: string
   prediction: 'will_graduate' | 'unlikely' | 'watching'
 }> {
+  // Derive social signal from holder count + curve progress (same logic as analyze-live)
+  const holders = onChainAnalysis.holderCount || 0
+  const progress = onChainAnalysis.curveProgress || 0
+  let socialSignal = 'low'
+  if (holders >= 50 && progress >= 60) socialSignal = 'viral'
+  else if (holders >= 20 && progress >= 30) socialSignal = 'trending'
+  else if (holders >= 8 || progress >= 15) socialSignal = 'moderate'
+
+  const tweetContent = onChainAnalysis.tweetAnalysis?.content || ''
+
   const prompt = `Analyze this trends.fun token for graduation probability:
 
 **Token**: ${launch.name} (${launch.symbol})
@@ -45,6 +55,12 @@ export async function analyzeWithClaude(
 **Tweet Author**: ${launch.tweetAuthor ? `@${launch.tweetAuthor}` : 'Unknown'}
 **Launched**: ${new Date(launch.createdAt).toISOString()}
 **Age**: ${Math.round((Date.now() - launch.createdAt) / 1000 / 60)} minutes
+
+**Tweet Analysis** (trends.fun tokens are tokenized tweets):
+- Content: ${tweetContent || 'Not available'}
+- Author: @${launch.tweetAuthor || 'Unknown'}
+- Social Signal: ${socialSignal}
+- Note: Viral/controversial tweets from high-follower accounts graduate much faster. Evaluate tweet quality.
 
 **On-Chain Data**:
 - Bonding curve progress: ${onChainAnalysis.curveProgress.toFixed(1)}%

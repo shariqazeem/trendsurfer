@@ -80,9 +80,24 @@ export async function initDb(): Promise<void> {
       data TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS graduation_events (
+      id TEXT PRIMARY KEY,
+      mint TEXT NOT NULL,
+      symbol TEXT,
+      name TEXT,
+      predicted_score INTEGER,
+      curve_progress_at_prediction REAL,
+      graduated_at INTEGER NOT NULL,
+      predicted_at INTEGER,
+      time_to_graduate INTEGER,
+      was_predicted INTEGER DEFAULT 0,
+      UNIQUE(mint)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_predictions_mint ON predictions(mint);
     CREATE INDEX IF NOT EXISTS idx_positions_status ON positions(status);
     CREATE INDEX IF NOT EXISTS idx_agent_log_timestamp ON agent_log(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_graduation_events_time ON graduation_events(graduated_at);
   `)
 
   // Migrate existing positions table — add new columns if missing
@@ -267,6 +282,37 @@ export async function getAgentLogs(limit: number = 100): Promise<any[]> {
   const d = getDb()
   const result = await d.execute({
     sql: 'SELECT * FROM agent_log ORDER BY timestamp DESC LIMIT ?',
+    args: [limit],
+  })
+  return result.rows as any[]
+}
+
+// ── Graduation Events ──
+
+export async function saveGraduationEvent(event: {
+  id: string
+  mint: string
+  symbol: string
+  name: string
+  predictedScore: number
+  curveProgressAtPrediction: number
+  graduatedAt: number
+  predictedAt: number
+  timeToGraduate: number
+  wasPredicted: boolean
+}): Promise<void> {
+  const d = getDb()
+  await d.execute({
+    sql: `INSERT OR REPLACE INTO graduation_events (id, mint, symbol, name, predicted_score, curve_progress_at_prediction, graduated_at, predicted_at, time_to_graduate, was_predicted)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [event.id, event.mint, event.symbol, event.name, event.predictedScore, event.curveProgressAtPrediction, event.graduatedAt, event.predictedAt, event.timeToGraduate, event.wasPredicted ? 1 : 0],
+  })
+}
+
+export async function getGraduationEvents(limit: number = 20): Promise<any[]> {
+  const d = getDb()
+  const result = await d.execute({
+    sql: 'SELECT * FROM graduation_events ORDER BY graduated_at DESC LIMIT ?',
     args: [limit],
   })
   return result.rows as any[]

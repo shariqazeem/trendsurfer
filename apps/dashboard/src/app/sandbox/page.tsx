@@ -25,6 +25,12 @@ interface Analysis {
   graduated: boolean
   tweetUrl?: string
   tweetAuthor?: string
+  tweetContent?: string
+  tweetEngagement?: {
+    estimatedViews: string
+    tokenHolders: number
+    socialSignal: 'viral' | 'trending' | 'moderate' | 'low'
+  }
 }
 
 type Phase = 'idle' | 'validating' | 'fetching' | 'analyzing' | 'done' | 'error'
@@ -410,6 +416,46 @@ export default function SandboxPage() {
                     {analysis.reasoning}
                   </p>
                 </div>
+
+                {/* Tweet Analysis */}
+                {(analysis.tweetContent || analysis.tweetAuthor) && (
+                  <div className="px-5 py-4 border-t border-gray-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-gray-400">
+                        <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Tweet Analysis</span>
+                      {analysis.tweetEngagement?.socialSignal && (
+                        <span className={`ml-auto px-2 py-0.5 text-[10px] font-semibold rounded ${
+                          analysis.tweetEngagement.socialSignal === 'viral' ? 'bg-emerald-50 text-emerald-700'
+                            : analysis.tweetEngagement.socialSignal === 'trending' ? 'bg-blue-50 text-blue-700'
+                              : analysis.tweetEngagement.socialSignal === 'moderate' ? 'bg-amber-50 text-amber-700'
+                                : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {analysis.tweetEngagement.socialSignal.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    {analysis.tweetContent && (
+                      <p className="text-sm text-gray-600 italic leading-relaxed mb-2">
+                        &ldquo;{analysis.tweetContent.length > 200
+                          ? analysis.tweetContent.substring(0, 200) + '...'
+                          : analysis.tweetContent}&rdquo;
+                      </p>
+                    )}
+                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                      {analysis.tweetAuthor && (
+                        <span>Author: <span className="font-medium text-gray-700">@{analysis.tweetAuthor}</span></span>
+                      )}
+                      {analysis.tweetEngagement && (
+                        <>
+                          <span>Est. Views: <span className="font-medium text-gray-700">{analysis.tweetEngagement.estimatedViews}</span></span>
+                          <span>Holders: <span className="font-medium text-gray-700">{analysis.tweetEngagement.tokenHolders}</span></span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Pool info */}
                 {analysis.poolAddress && (
