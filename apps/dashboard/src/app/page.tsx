@@ -119,8 +119,8 @@ const SANDBOX_PHASE_LABELS: Record<SandboxPhase, string> = {
 }
 
 const EXAMPLE_TOKENS = [
-  { label: 'Try: USDC', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' },
-  { label: 'Try: BONK', mint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263' },
+  { label: 'Try: $Chhealth (88% curve)', mint: 'EK7NyRkRmstUZ49g9Z5a6Y3vFDywJu1cCph3SsRcvb8N' },
+  { label: 'Try: $AGNT (37% curve)', mint: 'Bie3j6rvTK1t1vJ1qTo1YnvS1AjZfwg8f1XQ2Cq2BAGS' },
 ]
 
 // ────────────────────────────────────────────────────────────────────────────────

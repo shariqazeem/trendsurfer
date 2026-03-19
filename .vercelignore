@@ -1,0 +1,10 @@
+data/
+test-results/
+apps/dashboard/test-results/
+apps/dashboard/e2e/
+apps/dashboard/playwright.config.ts
+scripts/
+*.db
+*.log
+.env
+.env.local
