@@ -13,6 +13,9 @@ const METEORA_DBC_PROGRAM = 'dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN'
 const VIRTUAL_POOL_DISC = 'd5e005d16245775c'
 const CONFIG_DISC = '1a6c0e7b74e6812b'
 const BITGET_BASE = 'https://copenapi.bgwapi.io'
+const COMMONSTACK_API_KEY = process.env.COMMONSTACK_API_KEY || ''
+const COMMONSTACK_BASE_URL = 'https://api.commonstack.ai/v1'
+const AI_MODEL = process.env.COMMONSTACK_MODEL || 'google/gemini-2.5-flash'
 
 // ── Helpers ──
 
@@ -288,33 +291,91 @@ async function analyzeMint(mint: string): Promise<AnalysisResult> {
     ))
   )
 
-  // 8. Generate reasoning
+  // 8. AI-enhanced analysis (if API key is available and curve is meaningful)
+  let aiScore: number | null = null
+  let aiReasoning = ''
+  let aiPrediction = ''
+
+  if (COMMONSTACK_API_KEY && curveProgress >= 15) {
+    try {
+      const aiPrompt = `Analyze this trends.fun token for graduation probability:
+
+Token: ${name} (${symbol})
+Tweet URL: ${tweetUrl || 'Unknown'}
+Tweet Author: @${tweetAuthor || 'Unknown'}
+Tweet Content: ${tweetContent || 'Not available'}
+
+On-Chain: ${curveProgress.toFixed(1)}% curve filled, ${holderCount} holders, top holder ${topHolderConcentration}%
+Security: ${safe ? 'Passed' : 'Warning'} (score ${securityScore}/100)
+Social Signal: ${socialSignal} (est. ${estimatedViews} views)
+
+Respond JSON only: {"score": 0-100, "reasoning": "2-3 sentences with specific analysis", "prediction": "will_graduate|unlikely|watching"}`
+
+      const aiRes = await fetch(`${COMMONSTACK_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${COMMONSTACK_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: AI_MODEL,
+          messages: [
+            { role: 'system', content: 'You predict trends.fun token graduations. Tokens are tokenized tweets on Meteora DBC (Solana). When bonding curve fills → graduates to DEX → price jumps. Tweet quality matters — viral tweets from influential authors graduate faster. Respond with JSON only.' },
+            { role: 'user', content: aiPrompt },
+          ],
+          max_tokens: 200,
+          temperature: 0.3,
+        }),
+      })
+      const aiData = await aiRes.json()
+      const aiText = aiData.choices?.[0]?.message?.content || ''
+      const jsonMatch = aiText.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0])
+        aiScore = Math.min(100, Math.max(0, parsed.score))
+        aiReasoning = parsed.reasoning || ''
+        aiPrediction = parsed.prediction || ''
+      }
+    } catch {
+      // AI analysis failed — fall through to on-chain reasoning
+    }
+  }
+
+  // Use AI score if available, otherwise fallback to on-chain
+  const finalScore = aiScore !== null ? Math.round((aiScore + score) / 2) : score
+
+  // Generate reasoning
   const parts: string[] = []
-  if (curveProgress >= 80) parts.push(`Bonding curve is ${curveProgress.toFixed(1)}% filled — very close to graduation.`)
-  else if (curveProgress >= 50) parts.push(`Bonding curve is ${curveProgress.toFixed(1)}% filled — past halfway.`)
-  else parts.push(`Bonding curve is only ${curveProgress.toFixed(1)}% filled — still early.`)
 
-  if (holderCount > 0) parts.push(`${holderCount} holders detected. Top holder owns ${topHolderConcentration}% of supply.`)
-  if (safe) parts.push('Security audit passed — no honeypot or authority risks detected.')
-  else parts.push('Security warning — potential risks detected.')
+  if (aiReasoning) {
+    parts.push(aiReasoning)
+  } else {
+    if (curveProgress >= 80) parts.push(`Bonding curve is ${curveProgress.toFixed(1)}% filled — very close to graduation.`)
+    else if (curveProgress >= 50) parts.push(`Bonding curve is ${curveProgress.toFixed(1)}% filled — past halfway.`)
+    else parts.push(`Bonding curve is only ${curveProgress.toFixed(1)}% filled — still early.`)
 
-  // Tweet analysis in reasoning
-  if (tweetContent) {
+    if (holderCount > 0) parts.push(`${holderCount} holders detected. Top holder owns ${topHolderConcentration}% of supply.`)
+    if (safe) parts.push('Security audit passed — no honeypot or authority risks detected.')
+    else parts.push('Security warning — potential risks detected.')
+  }
+
+  // Always append data points
+  if (tweetContent && !aiReasoning) {
     const truncated = tweetContent.length > 100 ? tweetContent.substring(0, 100) + '...' : tweetContent
     parts.push(`Tweet content: '${truncated}'`)
   }
-  if (tweetAuthor) parts.push(`Token linked to @${tweetAuthor} tweet.`)
+  if (tweetAuthor && !aiReasoning) parts.push(`Token linked to @${tweetAuthor} tweet.`)
   parts.push(`Social signal: ${socialSignal.toUpperCase()} (est. ${estimatedViews} views, ${holderCount} holders).`)
-  parts.push(`Overall score: ${score}/100 — ${score >= 75 ? 'HIGH' : score >= 40 ? 'MODERATE' : 'LOW'} graduation probability.`)
+  parts.push(`Overall score: ${finalScore}/100 — ${finalScore >= 75 ? 'HIGH' : finalScore >= 40 ? 'MODERATE' : 'LOW'} graduation probability.`)
 
-  const prediction = score >= 75 ? 'will_graduate' : score >= 40 ? 'watching' : 'unlikely'
+  const prediction = aiPrediction || (finalScore >= 75 ? 'will_graduate' : finalScore >= 40 ? 'watching' : 'unlikely')
 
   return {
     mint,
     name,
     symbol,
     poolAddress,
-    score,
+    score: finalScore,
     curveProgress,
     velocity,
     velocityScore,

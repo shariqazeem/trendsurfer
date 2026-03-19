@@ -457,12 +457,27 @@ export default function SandboxPage() {
                   </div>
                 )}
 
-                {/* Pool info */}
-                {analysis.poolAddress && (
-                  <div className="px-5 py-3 border-t border-gray-200 flex items-center justify-between">
-                    <span className="text-[11px] text-gray-400">
-                      Pool: <span style={{ fontFamily: MONO }}>{analysis.poolAddress.substring(0, 16)}...</span>
-                    </span>
+                {/* Links */}
+                <div className="px-5 py-3 border-t border-gray-200 flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={`https://solscan.io/token/${analysis.mint}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-blue-600 hover:underline"
+                    >
+                      Solscan
+                    </a>
+                    {analysis.poolAddress && (
+                      <a
+                        href={`https://solscan.io/account/${analysis.poolAddress}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] text-blue-600 hover:underline"
+                      >
+                        Pool
+                      </a>
+                    )}
                     {analysis.tweetUrl && (
                       <a
                         href={analysis.tweetUrl}
@@ -470,11 +485,14 @@ export default function SandboxPage() {
                         rel="noopener noreferrer"
                         className="text-[11px] text-blue-600 hover:underline"
                       >
-                        View original tweet
+                        Tweet
                       </a>
                     )}
                   </div>
-                )}
+                  <span className="text-[10px] text-gray-400" style={{ fontFamily: MONO }}>
+                    {analysis.poolAddress ? `${analysis.poolAddress.substring(0, 12)}...` : analysis.mint.substring(0, 12) + '...'}
+                  </span>
+                </div>
               </div>
 
               {/* SDK Attribution */}
