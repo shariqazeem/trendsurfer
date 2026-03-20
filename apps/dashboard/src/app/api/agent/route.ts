@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@libsql/client'
 
+export const dynamic = 'force-dynamic'
+
 function getDbClient() {
   const tursoUrl = process.env.TURSO_DATABASE_URL?.trim()
   if (tursoUrl) {
