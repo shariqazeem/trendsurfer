@@ -2,83 +2,81 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@libsql/client'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 10
 
-function getDbClient() {
-  const tursoUrl = process.env.TURSO_DATABASE_URL?.trim()
-  if (tursoUrl) {
-    return createClient({ url: tursoUrl, authToken: process.env.TURSO_AUTH_TOKEN?.trim() })
+function getDb() {
+  const url = process.env.TURSO_DATABASE_URL?.trim()
+  const token = process.env.TURSO_AUTH_TOKEN?.trim()
+  if (url) {
+    return createClient({ url, authToken: token })
   }
-  const path = require('path')
-  const dbPath = process.env.DATABASE_URL || path.join(process.cwd(), '../../data/trendsurfer.db')
-  return createClient({ url: `file:${dbPath}` })
+  return createClient({ url: 'file:./data/trendsurfer.db' })
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ])
+}
+
+const EMPTY_STATUS = {
+  running: false,
+  uptime: 0,
+  tokensScanned: 0,
+  tokensAnalyzed: 0,
+  activePositions: 0,
+  totalTrades: 0,
+  totalPnl: 0,
+  winRate: 0,
+  lastScan: 0,
+  logs: [] as any[],
 }
 
 export async function GET() {
   try {
-    const db = getDbClient()
+    const db = getDb()
 
-    let logs: any[] = []
-    let status = {
-      running: false,
-      uptime: 0,
-      tokensScanned: 0,
-      tokensAnalyzed: 0,
-      activePositions: 0,
-      totalTrades: 0,
-      totalPnl: 0,
-      winRate: 0,
-      lastScan: 0,
-    }
+    // Single query to get everything we need — much faster than 4 separate queries
+    const [logsResult, statsResult] = await Promise.all([
+      withTimeout(
+        db.execute('SELECT * FROM agent_log ORDER BY timestamp DESC LIMIT 100'),
+        5000,
+        { rows: [] } as any
+      ),
+      withTimeout(
+        db.execute(`SELECT
+          (SELECT COUNT(*) FROM predictions) as pred_count,
+          (SELECT COUNT(*) FROM positions WHERE status = 'open') as open_count,
+          (SELECT COUNT(*) FROM positions WHERE status = 'closed') as closed_count,
+          (SELECT COALESCE(SUM(realized_pnl), 0) FROM positions WHERE status = 'closed') as total_pnl,
+          (SELECT COALESCE(SUM(CASE WHEN realized_pnl > 0 THEN 1 ELSE 0 END), 0) FROM positions WHERE status = 'closed') as wins
+        `),
+        5000,
+        { rows: [{}] } as any
+      ),
+    ])
 
-    try {
-      const logsResult = await db.execute('SELECT * FROM agent_log ORDER BY timestamp DESC LIMIT 100')
-      logs = logsResult.rows as any[]
+    const logs = logsResult.rows as any[]
+    const stats = (statsResult.rows[0] || {}) as any
+    const lastLog = logs[0] as any
 
-      const pnlResult = await db.execute(`
-        SELECT
-          COALESCE(SUM(realized_pnl), 0) as total_pnl,
-          COUNT(*) as total_trades,
-          COALESCE(SUM(CASE WHEN realized_pnl > 0 THEN 1 ELSE 0 END), 0) as wins
-        FROM positions WHERE status = 'closed'
-      `)
-      const pnl = pnlResult.rows[0] as any
+    // Agent is "running" if last heartbeat was within 10 minutes
+    const running = lastLog ? (Date.now() - Number(lastLog.timestamp) < 10 * 60 * 1000) : false
 
-      const openResult = await db.execute("SELECT COUNT(*) as c FROM positions WHERE status = 'open'")
-      const openCount = openResult.rows[0] as any
-
-      const predResult = await db.execute('SELECT COUNT(*) as c FROM predictions')
-      const predictions = predResult.rows[0] as any
-
-      const lastLog = logs[0] as any
-
-      status = {
-        running: lastLog ? (Date.now() - lastLog.timestamp < 5 * 60 * 1000) : false,
-        uptime: 0,
-        tokensScanned: predictions?.c || 0,
-        tokensAnalyzed: predictions?.c || 0,
-        activePositions: openCount?.c || 0,
-        totalTrades: pnl?.total_trades || 0,
-        totalPnl: pnl?.total_pnl || 0,
-        winRate: pnl?.total_trades > 0 ? (pnl.wins / pnl.total_trades) * 100 : 0,
-        lastScan: lastLog?.timestamp || 0,
-      }
-    } catch {
-      // DB might not exist yet
-    }
-
-    return NextResponse.json({ ...status, logs })
-  } catch {
     return NextResponse.json({
-      running: false,
+      running,
       uptime: 0,
-      tokensScanned: 0,
-      tokensAnalyzed: 0,
-      activePositions: 0,
-      totalTrades: 0,
-      totalPnl: 0,
-      winRate: 0,
-      lastScan: 0,
-      logs: [],
+      tokensScanned: Number(stats.pred_count) || 0,
+      tokensAnalyzed: Number(stats.pred_count) || 0,
+      activePositions: Number(stats.open_count) || 0,
+      totalTrades: Number(stats.closed_count) || 0,
+      totalPnl: Number(stats.total_pnl) || 0,
+      winRate: stats.closed_count > 0 ? (Number(stats.wins) / Number(stats.closed_count)) * 100 : 0,
+      lastScan: lastLog ? Number(lastLog.timestamp) : 0,
+      logs,
     })
+  } catch {
+    return NextResponse.json(EMPTY_STATUS)
   }
 }
