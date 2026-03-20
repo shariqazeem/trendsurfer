@@ -297,7 +297,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchAll()
-    const interval = setInterval(fetchAll, 5000)
+    const interval = setInterval(fetchAll, 30000) // Poll every 30s to conserve Turso reads
     return () => clearInterval(interval)
   }, [fetchAll])
 
@@ -314,7 +314,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDecisions()
-    const interval = setInterval(fetchDecisions, 10000)
+    const interval = setInterval(fetchDecisions, 30000) // Poll every 30s to conserve Turso reads
     return () => clearInterval(interval)
   }, [fetchDecisions])
 
