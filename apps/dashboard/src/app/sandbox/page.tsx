@@ -55,11 +55,19 @@ const PHASE_LABELS: Record<Phase, string> = {
   error: 'Analysis failed',
 }
 
-// Example tokens for quick testing
-const EXAMPLES = [
+// Fallback tokens (used when trending API is empty)
+const FALLBACK_EXAMPLES = [
   { label: 'Try: $Chhealth (88% curve)', mint: 'EK7NyRkRmstUZ49g9Z5a6Y3vFDywJu1cCph3SsRcvb8N' },
   { label: 'Try: $AGNT (37% curve)', mint: 'Bie3j6rvTK1t1vJ1qTo1YnvS1AjZfwg8f1XQ2Cq2BAGS' },
 ]
+
+interface TrendingToken {
+  mint: string
+  symbol: string
+  name: string
+  score: number
+  curveProgress: number
+}
 
 // ── History helpers ──
 function loadHistory(): HistoryItem[] {
@@ -114,12 +122,16 @@ function SandboxContent() {
   const [copied, setCopied] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
   const [history, setHistory] = useState<HistoryItem[]>([])
+  const [trendingTokens, setTrendingTokens] = useState<TrendingToken[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const autoAnalyzeRef = useRef(false)
 
-  // Load history on mount
+  // Load history + trending tokens on mount
   useEffect(() => {
     setHistory(loadHistory())
+    fetch('/api/trending').then(r => r.json()).then(d => {
+      if (d.tokens?.length > 0) setTrendingTokens(d.tokens)
+    }).catch(() => {})
   }, [])
 
   const handleAnalyze = useCallback(async (mintOverride?: string) => {
@@ -309,10 +321,16 @@ function SandboxContent() {
             </button>
           </div>
 
-          {/* Example tokens */}
-          <div className="flex items-center gap-2 mt-3">
+          {/* Example tokens — dynamic from agent or fallback */}
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
             <span className="text-[11px] text-gray-400">Quick test:</span>
-            {EXAMPLES.map((ex) => (
+            {(trendingTokens.length > 0
+              ? trendingTokens.slice(0, 3).map((t) => ({
+                  label: `$${t.symbol} (${t.curveProgress.toFixed(0)}% curve)`,
+                  mint: t.mint,
+                }))
+              : FALLBACK_EXAMPLES
+            ).map((ex) => (
               <button
                 key={ex.mint}
                 onClick={() => setMint(ex.mint)}
@@ -322,6 +340,9 @@ function SandboxContent() {
                 {ex.label}
               </button>
             ))}
+            {trendingTokens.length > 0 && (
+              <span className="text-[10px] text-gray-300 ml-1">live from agent</span>
+            )}
           </div>
         </motion.div>
 

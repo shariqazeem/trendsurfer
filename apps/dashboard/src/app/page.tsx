@@ -155,10 +155,18 @@ const SANDBOX_PHASE_LABELS: Record<SandboxPhase, string> = {
   error: 'Analysis failed',
 }
 
-const EXAMPLE_TOKENS = [
+const FALLBACK_TOKENS = [
   { label: 'Try: $Chhealth (88% curve)', mint: 'EK7NyRkRmstUZ49g9Z5a6Y3vFDywJu1cCph3SsRcvb8N' },
   { label: 'Try: $AGNT (37% curve)', mint: 'Bie3j6rvTK1t1vJ1qTo1YnvS1AjZfwg8f1XQ2Cq2BAGS' },
 ]
+
+interface TrendingToken {
+  mint: string
+  symbol: string
+  name: string
+  score: number
+  curveProgress: number
+}
 
 // ────────────────────────────────────────────────────────────────────────────────
 // Main Dashboard
@@ -180,6 +188,9 @@ export default function Dashboard() {
   // Graduation tracker state
   const [graduationEvents, setGraduationEvents] = useState<GraduationEvent[]>([])
   const [graduationStats, setGraduationStats] = useState<GraduationStats>({ total: 0, correctlyPredicted: 0, accuracy: 0 })
+
+  // Trending tokens for quick test buttons
+  const [trendingTokens, setTrendingTokens] = useState<TrendingToken[]>([])
 
   // Sandbox state (hero)
   const [sandboxMint, setSandboxMint] = useState('')
@@ -264,6 +275,12 @@ export default function Dashboard() {
       setGraduationEvents(gradData.events || [])
       setGraduationStats(gradData.stats || { total: 0, correctlyPredicted: 0, accuracy: 0 })
     } catch { /* graduations API not ready */ }
+
+    try {
+      const trendRes = await fetch('/api/trending')
+      const trendData = await trendRes.json()
+      if (trendData.tokens?.length > 0) setTrendingTokens(trendData.tokens)
+    } catch { /* trending API not ready */ }
 
     setLoading(false)
   }, [])
@@ -466,10 +483,16 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {/* Quick test buttons */}
-            <div className="flex items-center gap-2 mt-3">
+            {/* Quick test buttons — dynamic from agent or fallback */}
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
               <span className="text-[11px] text-gray-400">Quick test:</span>
-              {EXAMPLE_TOKENS.map((ex) => (
+              {(trendingTokens.length > 0
+                ? trendingTokens.slice(0, 3).map((t) => ({
+                    label: `$${t.symbol} (${t.curveProgress.toFixed(0)}% curve)`,
+                    mint: t.mint,
+                  }))
+                : FALLBACK_TOKENS
+              ).map((ex) => (
                 <button
                   key={ex.mint}
                   onClick={() => setSandboxMint(ex.mint)}
@@ -479,6 +502,9 @@ export default function Dashboard() {
                   {ex.label}
                 </button>
               ))}
+              {trendingTokens.length > 0 && (
+                <span className="text-[10px] text-gray-300 ml-1">live from agent</span>
+              )}
             </div>
           </motion.div>
 
