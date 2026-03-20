@@ -379,13 +379,45 @@ export default function Dashboard() {
     )
   }
 
+  // Latest graduation for notification banner
+  const latestGraduation = graduationEvents.length > 0 ? graduationEvents[0] : null
+  const [bannerDismissed, setBannerDismissed] = useState(false)
+
   return (
     <div className="min-h-screen bg-white text-gray-900">
+      {/* Graduation notification banner */}
+      <AnimatePresence>
+        {latestGraduation && !bannerDismissed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-emerald-50 border-b border-emerald-100 px-4 py-2.5">
+              <div className="max-w-6xl mx-auto flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-emerald-600 font-medium">New graduation detected:</span>
+                  <span className="text-emerald-800 font-semibold">${latestGraduation.symbol}</span>
+                  <span className="text-emerald-600">
+                    {latestGraduation.wasPredicted ? 'correctly predicted' : 'tracked'} at score {latestGraduation.predictedScore}/100
+                  </span>
+                </div>
+                <button onClick={() => setBannerDismissed(true)} className="text-emerald-400 hover:text-emerald-600 transition-colors">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ================================================================== */}
       {/* SECTION 1: HERO = SANDBOX                                          */}
       {/* ================================================================== */}
-      <section className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-16 sm:pt-16 sm:pb-20">
+      <section className="bg-white border-b border-gray-100">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-20 sm:pt-20 sm:pb-28">
           {/* Top row: logo + status + links */}
           <div className="relative flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
@@ -506,13 +538,6 @@ export default function Dashboard() {
             <p className="text-base sm:text-lg text-gray-500 mt-3 max-w-2xl mx-auto">
               Paste any token mint address &rarr; instant graduation analysis
             </p>
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <span className="text-[10px] text-gray-400">Powered by</span>
-              <span className="px-1.5 py-0.5 text-[10px] rounded bg-gray-100 text-gray-500 font-medium">Solana</span>
-              <span className="px-1.5 py-0.5 text-[10px] rounded bg-gray-100 text-gray-500 font-medium">Meteora DBC</span>
-              <span className="px-1.5 py-0.5 text-[10px] rounded bg-gray-100 text-gray-500 font-medium">Bitget Wallet</span>
-              <span className="px-1.5 py-0.5 text-[10px] rounded bg-gray-100 text-gray-500 font-medium">Helius</span>
-            </div>
           </motion.div>
 
           {/* Live Stats Ticker */}
@@ -917,67 +942,6 @@ export default function Dashboard() {
             </AnimatePresence>
           </div>
 
-          {/* ── Animated Bonding Curve (accent, smaller) ── */}
-          <AnimatePresence>
-            {sandboxPhase === 'idle' && !sandboxAnalysis && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ delay: 0.3, duration: 0.5 }}
-                className="max-w-md mx-auto mb-10"
-              >
-                <HeroBondingCurve />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Stat counters */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto mb-10">
-            <AnimatedStatCard
-              label="Tokens Scanned"
-              value={status?.tokensScanned || 0}
-              format="int"
-              delay={0.5}
-            />
-            <AnimatedStatCard
-              label="Predictions Made"
-              value={predictions.length}
-              format="int"
-              delay={0.6}
-            />
-            <AnimatedStatCard
-              label="Graduations"
-              value={graduationStats.total}
-              format="int"
-              delay={0.7}
-            />
-            <AnimatedStatCard
-              label="Accuracy"
-              value={graduationStats.accuracy}
-              format="percent"
-              delay={0.8}
-            />
-          </div>
-
-          {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <a
-              href="#scanner"
-              className="px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
-            >
-              View Scanner
-            </a>
-            <button
-              onClick={handleCopy}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
-            >
-              <span style={{ fontFamily: MONO }} className="text-xs">
-                npm install trendsurfer-skill
-              </span>
-              <span className="text-gray-400 text-xs">{copied ? 'Copied!' : 'Copy'}</span>
-            </button>
-          </div>
         </div>
       </section>
 
@@ -989,7 +953,7 @@ export default function Dashboard() {
       {/* ================================================================== */}
       {/* SECTION 2.5: AGENT LIVE DECISIONS                                   */}
       {/* ================================================================== */}
-      <section className="bg-white border-b border-gray-200 py-12 sm:py-16">
+      <section className="bg-white border-b border-gray-100 py-16 sm:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionInView>
             <div className="flex items-center justify-between mb-6">
@@ -1041,7 +1005,7 @@ export default function Dashboard() {
       {/* ================================================================== */}
       {/* SECTION 3: LIVE TOKEN SCANNER                                       */}
       {/* ================================================================== */}
-      <section id="scanner" className="bg-white border-b border-gray-200 py-12 sm:py-16">
+      <section id="scanner" className="bg-[#fafafa] border-b border-gray-100 py-16 sm:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionInView>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -1108,7 +1072,7 @@ export default function Dashboard() {
       {/* ================================================================== */}
       {/* SECTION 4: RECENT PREDICTIONS                                       */}
       {/* ================================================================== */}
-      <section className="bg-gray-50 border-b border-gray-200 py-12 sm:py-16">
+      <section className="bg-white border-b border-gray-100 py-16 sm:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionInView>
             <div className="mb-6">
@@ -1141,7 +1105,7 @@ export default function Dashboard() {
       {/* ================================================================== */}
       {/* SECTION 4.5: GRADUATION TRACKER                                     */}
       {/* ================================================================== */}
-      <section className="bg-white border-b border-gray-200 py-12 sm:py-16">
+      <section className="bg-[#fafafa] border-b border-gray-100 py-16 sm:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionInView>
             <div className="flex items-center justify-between mb-6">
@@ -1228,7 +1192,7 @@ export default function Dashboard() {
       {/* ================================================================== */}
       {/* SECTION 5: TRADING PERFORMANCE                                      */}
       {/* ================================================================== */}
-      <section className="bg-white border-b border-gray-200 py-12 sm:py-16">
+      <section className="bg-white border-b border-gray-100 py-16 sm:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionInView>
             <div className="mb-6">
@@ -1363,7 +1327,7 @@ export default function Dashboard() {
       {/* ================================================================== */}
       {/* SECTION 6: FOR DEVELOPERS                                           */}
       {/* ================================================================== */}
-      <section className="bg-gray-50 border-b border-gray-200 py-12 sm:py-16">
+      <section className="bg-[#fafafa] border-b border-gray-100 py-16 sm:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionInView>
             <div className="text-center mb-8">
@@ -1447,7 +1411,7 @@ export default function Dashboard() {
       {/* ================================================================== */}
       {/* SECTION 7: AGENT LOG                                                */}
       {/* ================================================================== */}
-      <section className="bg-white py-12 sm:py-16">
+      <section className="bg-white py-16 sm:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionInView>
             <button
@@ -1499,46 +1463,24 @@ export default function Dashboard() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-200 bg-gray-50 py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-md bg-gray-900 flex items-center justify-center">
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                  <path d="M2 12L6 4l4 8 4-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-              <p className="text-xs text-gray-500">
-                <span className="font-semibold text-gray-700">TrendSurfer</span> -- The Intelligence Skill for trends.fun
-              </p>
+      <footer className="border-t border-gray-100 py-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 text-center">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="w-6 h-6 rounded-md bg-gray-900 flex items-center justify-center">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                <path d="M2 12L6 4l4 8 4-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </div>
-            <div className="flex items-center gap-4 flex-wrap justify-center">
-              <a href="https://github.com/shariqazeem/trendsurfer" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-                GitHub
-              </a>
-              <a href="https://www.npmjs.com/package/trendsurfer-skill" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
-                npm
-              </a>
-              <Link href="/developers" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
-                Docs
-              </Link>
-              <Link href="/sandbox" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
-                Sandbox
-              </Link>
-              <span className="text-[10px] text-gray-300">|</span>
-              <span className="text-[10px] text-gray-400">Built for Agent Talent Show 2026</span>
-            </div>
+            <span className="text-sm font-semibold text-gray-900">TrendSurfer</span>
           </div>
-          <div className="mt-4 pt-4 border-t border-gray-200 flex flex-wrap items-center justify-center gap-3">
-            <span className="px-2 py-0.5 text-[10px] rounded bg-gray-100 text-gray-500 border border-gray-200">Solana</span>
-            <span className="px-2 py-0.5 text-[10px] rounded bg-gray-100 text-gray-500 border border-gray-200">Meteora DBC</span>
-            <span className="px-2 py-0.5 text-[10px] rounded bg-gray-100 text-gray-500 border border-gray-200">Bitget Wallet</span>
-            <span className="px-2 py-0.5 text-[10px] rounded bg-gray-100 text-gray-500 border border-gray-200">trends.fun</span>
-            <span className="px-2 py-0.5 text-[10px] rounded bg-gray-100 text-gray-500 border border-gray-200">Helius RPC</span>
-            <span className="px-2 py-0.5 text-[10px] rounded bg-gray-100 text-gray-500 border border-gray-200">x402</span>
-            <span className="px-2 py-0.5 text-[10px] rounded bg-gray-100 text-gray-500 border border-gray-200">MCP</span>
+          <p className="text-xs text-gray-400 mb-4">The intelligence skill for trends.fun</p>
+          <div className="flex items-center justify-center gap-6">
+            <a href="https://github.com/shariqazeem/trendsurfer" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">GitHub</a>
+            <a href="https://www.npmjs.com/package/trendsurfer-skill" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">npm</a>
+            <Link href="/developers" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Docs</Link>
+            <Link href="/sandbox" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Sandbox</Link>
           </div>
+          <p className="text-[10px] text-gray-300 mt-6">Built for Agent Talent Show 2026 · Solana · Bitget Wallet · trends.fun · Helius · MCP · x402</p>
         </div>
       </footer>
     </div>
@@ -1940,7 +1882,7 @@ function HowItWorksSection() {
   ]
 
   return (
-    <section ref={ref} className="bg-gray-50 border-b border-gray-200 py-12 sm:py-16">
+    <section ref={ref} className="bg-[#fafafa] border-b border-gray-100 py-16 sm:py-24">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-10">
           <h2 className="text-xl font-semibold text-gray-900">How It Works</h2>
