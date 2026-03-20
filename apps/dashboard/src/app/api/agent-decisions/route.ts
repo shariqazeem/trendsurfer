@@ -13,20 +13,30 @@ function getDb() {
   return createClient({ url: 'file:./data/trendsurfer.db' })
 }
 
+// Timeout wrapper — return empty on timeout instead of hanging
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ])
+}
+
 export async function GET() {
   try {
     const db = getDb()
 
-    // Use a simpler query that won't hang on large datasets
-    const result = await db.execute({
-      sql: `SELECT * FROM predictions
-            WHERE created_at > ? AND prediction IN ('watching', 'will_graduate')
-            ORDER BY created_at DESC
-            LIMIT 50`,
-      args: [Date.now() - 24 * 60 * 60 * 1000],
-    })
+    const result = await withTimeout(
+      db.execute({
+        sql: `SELECT * FROM predictions
+              WHERE created_at > ? AND prediction IN ('watching', 'will_graduate')
+              ORDER BY created_at DESC
+              LIMIT 50`,
+        args: [Date.now() - 24 * 60 * 60 * 1000],
+      }),
+      5000,
+      { rows: [] } as any
+    )
 
-    // Deduplicate by mint, keeping the most recent
     const seen = new Set<string>()
     const decisions = result.rows
       .filter((row: any) => {
@@ -48,7 +58,7 @@ export async function GET() {
       }))
 
     return NextResponse.json({ decisions })
-  } catch (error: any) {
+  } catch {
     return NextResponse.json({ decisions: [] }, { status: 200 })
   }
 }

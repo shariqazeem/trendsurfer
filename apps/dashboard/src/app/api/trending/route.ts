@@ -13,18 +13,29 @@ function getDb() {
   return createClient({ url: 'file:./data/trendsurfer.db' })
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ])
+}
+
 export async function GET() {
   try {
     const db = getDb()
 
     // Simple query — get recent high-curve tokens, deduplicate in JS
-    const result = await db.execute({
-      sql: `SELECT * FROM predictions
-            WHERE created_at > ?
-            ORDER BY curve_progress DESC, score DESC
-            LIMIT 30`,
-      args: [Date.now() - 24 * 60 * 60 * 1000],
-    })
+    const result = await withTimeout(
+      db.execute({
+        sql: `SELECT * FROM predictions
+              WHERE created_at > ?
+              ORDER BY curve_progress DESC, score DESC
+              LIMIT 30`,
+        args: [Date.now() - 24 * 60 * 60 * 1000],
+      }),
+      5000,
+      { rows: [] } as any
+    )
 
     // Deduplicate by mint in JS (faster than SQL subquery on Turso)
     const seen = new Set<string>()

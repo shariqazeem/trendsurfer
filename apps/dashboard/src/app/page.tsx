@@ -199,6 +199,7 @@ export default function Dashboard() {
   const [sandboxError, setSandboxError] = useState('')
   const [sdkCopied, setSdkCopied] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [bannerDismissed, setBannerDismissed] = useState(false)
   const sandboxInputRef = useRef<HTMLInputElement>(null)
 
   const sandboxIsLoading = sandboxPhase === 'validating' || sandboxPhase === 'fetching' || sandboxPhase === 'analyzing'
@@ -381,7 +382,6 @@ export default function Dashboard() {
 
   // Latest graduation for notification banner
   const latestGraduation = graduationEvents.length > 0 ? graduationEvents[0] : null
-  const [bannerDismissed, setBannerDismissed] = useState(false)
 
   return (
     <div className="min-h-screen bg-white text-gray-900">

@@ -13,6 +13,13 @@ function getDb() {
   return createClient({ url: 'file:./data/trendsurfer.db' })
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ])
+}
+
 export async function GET() {
   try {
     const db = getDb()
@@ -20,10 +27,14 @@ export async function GET() {
     // First check if the table exists
     let events: any[] = []
     try {
-      const result = await db.execute({
-        sql: 'SELECT * FROM graduation_events ORDER BY graduated_at DESC LIMIT 20',
-        args: [],
-      })
+      const result = await withTimeout(
+        db.execute({
+          sql: 'SELECT * FROM graduation_events ORDER BY graduated_at DESC LIMIT 20',
+          args: [],
+        }),
+        5000,
+        { rows: [] } as any
+      )
       events = result.rows.map((row: any) => ({
         id: row.id,
         mint: row.mint,
