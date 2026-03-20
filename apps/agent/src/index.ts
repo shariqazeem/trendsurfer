@@ -206,15 +206,17 @@ async function analyzeLaunch(launch: TokenLaunch): Promise<void> {
     // 2. Security check
     const security = await skill.checkSecurity(launch.mint)
 
-    // 3. AI analysis — only for promising tokens (>40% curve) to save credits
-    // Tokens below 40% get on-chain analysis only (free, still accurate)
+    // 3. AI analysis — only for promising tokens (>60% curve) to save credits
+    // Tokens below 60% get on-chain analysis only (free, still accurate)
     let score: number
     let reasoning: string
     let prediction: 'will_graduate' | 'unlikely' | 'watching'
 
-    const useAI = process.env.COMMONSTACK_API_KEY && onChainAnalysis.curveProgress >= 40
+    const useAI = process.env.COMMONSTACK_API_KEY && onChainAnalysis.curveProgress >= 60
 
     if (useAI) {
+      // Brief pause to avoid rate limiting (CommonStack 429s)
+      await new Promise(r => setTimeout(r, 2000))
       const claudeResult = await analyzeWithClaude(launch, onChainAnalysis, security)
       score = claudeResult.score
       reasoning = claudeResult.reasoning
