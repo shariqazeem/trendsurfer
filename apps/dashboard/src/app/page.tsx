@@ -253,11 +253,18 @@ export default function Dashboard() {
   }, [])
 
   const fetchAll = useCallback(async () => {
+    // Helper: fetch with 8s timeout so one slow API can't block the page
+    const fetchWithTimeout = (url: string, ms = 8000) => {
+      const ctrl = new AbortController()
+      const timer = setTimeout(() => ctrl.abort(), ms)
+      return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer))
+    }
+
     try {
       const [predsRes, tradesRes, agentRes] = await Promise.all([
-        fetch('/api/predictions'),
-        fetch('/api/trades'),
-        fetch('/api/agent'),
+        fetchWithTimeout('/api/predictions'),
+        fetchWithTimeout('/api/trades'),
+        fetchWithTimeout('/api/agent'),
       ])
       const predsData = await predsRes.json()
       const tradesData = await tradesRes.json()
@@ -267,23 +274,24 @@ export default function Dashboard() {
       setPnl(tradesData.pnl || { totalPnl: 0, totalTrades: 0, winRate: 0 })
       setStatus(agentData)
     } catch {
-      /* API not ready */
+      /* API not ready or timed out */
     }
 
+    // These are non-critical — don't block page load
+    setLoading(false)
+
     try {
-      const gradRes = await fetch('/api/graduations')
+      const gradRes = await fetchWithTimeout('/api/graduations')
       const gradData = await gradRes.json()
       setGraduationEvents(gradData.events || [])
       setGraduationStats(gradData.stats || { total: 0, correctlyPredicted: 0, accuracy: 0 })
     } catch { /* graduations API not ready */ }
 
     try {
-      const trendRes = await fetch('/api/trending')
+      const trendRes = await fetchWithTimeout('/api/trending')
       const trendData = await trendRes.json()
       if (trendData.tokens?.length > 0) setTrendingTokens(trendData.tokens)
     } catch { /* trending API not ready */ }
-
-    setLoading(false)
   }, [])
 
   useEffect(() => {
