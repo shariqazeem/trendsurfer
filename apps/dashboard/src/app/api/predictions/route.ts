@@ -2,22 +2,33 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@libsql/client'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 10
 
-function getDbClient() {
-  const tursoUrl = process.env.TURSO_DATABASE_URL?.trim()
-  if (tursoUrl) {
-    return createClient({ url: tursoUrl, authToken: process.env.TURSO_AUTH_TOKEN?.trim() })
+function getDb() {
+  const url = process.env.TURSO_DATABASE_URL?.trim()
+  const token = process.env.TURSO_AUTH_TOKEN?.trim()
+  if (url) {
+    return createClient({ url, authToken: token })
   }
-  const path = require('path')
-  const dbPath = process.env.DATABASE_URL || path.join(process.cwd(), '../../data/trendsurfer.db')
-  return createClient({ url: `file:${dbPath}` })
+  return createClient({ url: 'file:./data/trendsurfer.db' })
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ])
 }
 
 export async function GET() {
   try {
-    const db = getDbClient()
+    const db = getDb()
 
-    const result = await db.execute('SELECT * FROM predictions ORDER BY created_at DESC LIMIT 50')
+    const result = await withTimeout(
+      db.execute('SELECT * FROM predictions ORDER BY created_at DESC LIMIT 50'),
+      5000,
+      { rows: [] } as any
+    )
 
     const predictions = result.rows.map((row: any) => ({
       id: row.id,
@@ -34,7 +45,6 @@ export async function GET() {
       traded: row.traded === 1,
     }))
 
-    // Deduplicate launches — keep only the latest prediction per mint
     const seen = new Set<string>()
     const launches = predictions
       .filter((p: any) => {
@@ -56,8 +66,7 @@ export async function GET() {
       }))
 
     return NextResponse.json({ predictions, launches })
-  } catch (error) {
-    console.error('Predictions API error:', error)
-    return NextResponse.json({ predictions: [], launches: [], error: String(error) })
+  } catch {
+    return NextResponse.json({ predictions: [], launches: [] })
   }
 }
