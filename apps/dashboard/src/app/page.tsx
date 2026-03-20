@@ -389,6 +389,12 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center gap-4">
               <Link
+                href="/sandbox"
+                className="hidden sm:inline-flex px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-50 transition-colors border border-gray-200"
+              >
+                Sandbox
+              </Link>
+              <Link
                 href="/developers"
                 className="hidden sm:inline-flex px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-50 transition-colors border border-gray-200"
               >
@@ -399,6 +405,11 @@ export default function Dashboard() {
                 <span className="text-xs font-medium text-gray-600">
                   {status?.running ? 'Agent Live' : 'Agent Offline'}
                 </span>
+                {status?.running && status.tokensScanned > 0 && (
+                  <span className="text-[10px] text-gray-400 hidden sm:inline" style={{ fontFamily: MONO }}>
+                    {status.tokensScanned.toLocaleString()} scans
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -417,6 +428,13 @@ export default function Dashboard() {
             <p className="text-base sm:text-lg text-gray-500 mt-3 max-w-2xl mx-auto">
               Paste any token mint address &rarr; instant graduation analysis
             </p>
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <span className="text-[10px] text-gray-400">Powered by</span>
+              <span className="px-1.5 py-0.5 text-[10px] rounded bg-gray-100 text-gray-500 font-medium">Solana</span>
+              <span className="px-1.5 py-0.5 text-[10px] rounded bg-gray-100 text-gray-500 font-medium">Meteora DBC</span>
+              <span className="px-1.5 py-0.5 text-[10px] rounded bg-gray-100 text-gray-500 font-medium">Bitget Wallet</span>
+              <span className="px-1.5 py-0.5 text-[10px] rounded bg-gray-100 text-gray-500 font-medium">Helius</span>
+            </div>
           </motion.div>
 
           {/* Live Stats Ticker */}
