@@ -22,10 +22,13 @@
   },
   "dependencies": {
     "@libsql/client": "^0.17.0",
+    "@payai/facilitator": "^2.3.4",
+    "@payai/x402": "^2.3.4",
     "@solana/web3.js": "^1.91.0",
     "better-sqlite3": "^11.0.0",
     "bs58": "^5.0.0",
     "dotenv": "^17.3.0",
-    "openai": "^4.86.0"
+    "openai": "^4.86.0",
+    "x402-solana": "^2.0.4"
   }
 }

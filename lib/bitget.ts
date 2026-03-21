@@ -211,7 +211,8 @@ export interface SwapConfirmParams {
 
 export async function confirmSwap(params: SwapConfirmParams) {
   const chain = params.fromChain || SOLANA_CHAIN
-  return bitgetPost('/swap-go/swapx/confirm', {
+  const slippage = params.slippage || '0.5'
+  const body: Record<string, unknown> = {
     fromChain: chain,
     fromSymbol: params.fromSymbol || '',
     fromContract: params.fromContract,
@@ -223,14 +224,20 @@ export async function confirmSwap(params: SwapConfirmParams) {
     toAddress: params.toAddress || params.fromAddress,
     market: params.market,
     protocol: params.protocol,
-    slippage: params.slippage || '0.5',
-    gasLevel: '',
+    slippage,
+    gasLevel: 'average',
     features: params.gasless ? ['no_gas'] : ['user_gas'],
-    recommendSlippage: '',
+    recommendSlippage: slippage,
     lastOutAmount: params.lastOutAmount,
-    mevProtection: '',
-    userActions: '',
-  })
+    mevProtection: {
+      chain,
+      mevFee: '0',
+      amountMin: params.fromAmount,
+      mevTarget: true,
+      mode: 'smart',
+    },
+  }
+  return bitgetPost('/swap-go/swapx/confirm', body)
 }
 
 export interface MakeOrderParams {
