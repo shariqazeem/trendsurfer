@@ -15,7 +15,7 @@ const CONFIG_DISC = '1a6c0e7b74e6812b'
 const BITGET_BASE = 'https://copenapi.bgwapi.io'
 const COMMONSTACK_API_KEY = process.env.COMMONSTACK_API_KEY || ''
 const COMMONSTACK_BASE_URL = 'https://api.commonstack.ai/v1'
-const AI_MODEL = process.env.COMMONSTACK_MODEL || 'google/gemini-2.5-flash'
+const AI_MODEL = process.env.COMMONSTACK_MODEL || 'openai/gpt-oss-120b'
 
 // ── Helpers ──
 

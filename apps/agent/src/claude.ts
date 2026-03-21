@@ -7,9 +7,9 @@ import type { GraduationAnalysis, TokenLaunch, SecurityCheck } from '../../../li
 
 const COMMONSTACK_BASE_URL = 'https://api.commonstack.ai/v1'
 
-// Use cheapest available model — Gemini Flash ($0.3/M input, $2.5/M output)
+// Use cheapest model — GPT OSS 120B ($0.05/M input, $0.25/M output)
 // Override with COMMONSTACK_MODEL env var
-const DEFAULT_MODEL = 'google/gemini-2.5-flash'
+const DEFAULT_MODEL = 'openai/gpt-oss-120b'
 
 function getClient(): OpenAI {
   const apiKey = process.env.COMMONSTACK_API_KEY
