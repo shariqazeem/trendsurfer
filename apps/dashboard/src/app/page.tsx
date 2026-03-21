@@ -204,12 +204,13 @@ export default function Dashboard() {
 
   const sandboxIsLoading = sandboxPhase === 'validating' || sandboxPhase === 'fetching' || sandboxPhase === 'analyzing'
 
-  const handleSandboxAnalyze = useCallback(async () => {
-    const trimmed = sandboxMint.trim()
+  const handleSandboxAnalyze = useCallback(async (mintOverride?: string) => {
+    const trimmed = (mintOverride || sandboxMint).trim()
     if (!trimmed) {
       sandboxInputRef.current?.focus()
       return
     }
+    if (mintOverride) setSandboxMint(trimmed)
 
     setSandboxPhase('validating')
     setSandboxAnalysis(null)
@@ -586,7 +587,7 @@ export default function Dashboard() {
                 )}
               </div>
               <button
-                onClick={handleSandboxAnalyze}
+                onClick={() => handleSandboxAnalyze()}
                 disabled={sandboxIsLoading || !sandboxMint.trim()}
                 className="px-6 py-3.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
               >
@@ -616,7 +617,7 @@ export default function Dashboard() {
               ).map((ex) => (
                 <button
                   key={ex.mint}
-                  onClick={() => setSandboxMint(ex.mint)}
+                  onClick={() => handleSandboxAnalyze(ex.mint)}
                   disabled={sandboxIsLoading}
                   className="text-[11px] text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
                 >

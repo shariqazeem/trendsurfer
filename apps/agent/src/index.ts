@@ -225,7 +225,7 @@ async function analyzeLaunch(launch: TokenLaunch): Promise<void> {
       // On-chain score only (no AI cost)
       score = onChainAnalysis.score
       reasoning = onChainAnalysis.reasoning
-      prediction = score >= 75 ? 'will_graduate' : score >= 40 ? 'watching' : 'unlikely'
+      prediction = score >= 65 ? 'will_graduate' : score >= 35 ? 'watching' : 'unlikely'
     }
 
     // 4. Save prediction

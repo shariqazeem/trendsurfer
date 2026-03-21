@@ -29,9 +29,11 @@ export async function GET() {
       .filter((row: any) => {
         if (seen.has(row.mint)) return false
         seen.add(row.mint)
-        return true
+        // Prefer tokens still in progress (not 100% graduated) for more interesting demo
+        return (row.curve_progress || 0) < 99
       })
-      .sort((a: any, b: any) => (b.curve_progress || 0) - (a.curve_progress || 0))
+      // Sort by score (most interesting first), not by curve progress
+      .sort((a: any, b: any) => (b.score || 0) - (a.score || 0))
       .slice(0, 6)
       .map((row: any) => ({
         mint: row.mint, symbol: row.symbol, name: row.name,

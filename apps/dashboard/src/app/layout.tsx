@@ -22,6 +22,9 @@ export const metadata: Metadata = {
     description: 'AI-powered graduation prediction. Paste a mint → get a score. SDK on npm, MCP server, x402 micropayments. Built for the Agent Talent Show hackathon.',
     creator: '@AzeemShariq',
   },
+  icons: {
+    icon: '/favicon.svg',
+  },
   metadataBase: new URL(siteUrl),
   robots: { index: true, follow: true },
 }

@@ -368,7 +368,7 @@ Respond JSON only: {"score": 0-100, "reasoning": "2-3 sentences with specific an
   parts.push(`Social signal: ${socialSignal.toUpperCase()} (est. ${estimatedViews} views, ${holderCount} holders).`)
   parts.push(`Overall score: ${finalScore}/100 — ${finalScore >= 75 ? 'HIGH' : finalScore >= 40 ? 'MODERATE' : 'LOW'} graduation probability.`)
 
-  const prediction = aiPrediction || (finalScore >= 75 ? 'will_graduate' : finalScore >= 40 ? 'watching' : 'unlikely')
+  const prediction = aiPrediction || (finalScore >= 65 ? 'will_graduate' : finalScore >= 35 ? 'watching' : 'unlikely')
 
   return {
     mint,
