@@ -73,7 +73,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: 'check_security',
       description:
-        'Check token security via Bitget Wallet API. Returns safe (boolean), honeypot detection, mint/freeze authority checks, and specific warning messages.',
+        'Check token security. Returns safe (boolean), honeypot detection, mint/freeze authority checks, and specific warning messages.',
       inputSchema: {
         type: 'object' as const,
         properties: {
@@ -85,7 +85,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: 'get_quote',
       description:
-        'Get a swap quote for buying or selling a token via Bitget Wallet. Gasless — gas is deducted from input token. Minimum trade ~$5 USD.',
+        'Get a swap quote for buying or selling a token on Meteora DBC.',
       inputSchema: {
         type: 'object' as const,
         properties: {

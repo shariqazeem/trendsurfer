@@ -68,7 +68,7 @@ export async function analyzeWithClaude(
 - Holder count: ${onChainAnalysis.holderCount || 'Unknown'}
 - Top holder concentration: ${onChainAnalysis.topHolderConcentration || 'Unknown'}%
 
-**Security (Bitget Audit)**:
+**Security Audit**:
 - Safe: ${security.safe ? 'Yes' : 'NO'}
 - Honeypot: ${security.honeypot ? 'YES — DO NOT BUY' : 'No'}
 - Mint authority: ${security.mintAuthority ? 'Yes (risk)' : 'No'}

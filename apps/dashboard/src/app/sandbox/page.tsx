@@ -692,7 +692,7 @@ function SandboxContent() {
               <StepCard
                 number={2}
                 title="SDK analyzes on-chain"
-                desc="Reads pool state, holder distribution, security audit via Helius + Bitget"
+                desc="Reads pool state, holder distribution, security audit via Helius RPC"
               />
               <StepCard
                 number={3}

@@ -17,11 +17,11 @@ const analysis = await skill.analyzeGraduation(launch)
 // → { score: 87, curveProgress: 72.3,
 //     velocity: 'accelerating', ... }
 
-// Check token security via Bitget
+// Check token security on-chain
 const security = await skill.checkSecurity(mint)
 // → { safe: true, honeypot: false }
 
-// Execute a gasless trade via Bitget Wallet
+// Execute a trade on Meteora DBC
 const trade = await skill.executeTrade({
   tokenIn: 'SOL',
   tokenOut: tokenMint,
@@ -32,7 +32,7 @@ const mcpTools = [
   { name: 'scan_launches', desc: 'Discover new trends.fun token launches in real-time' },
   { name: 'analyze_graduation', desc: 'Get graduation probability score (0-100) with AI reasoning' },
   { name: 'check_security', desc: 'Token safety audit — honeypot, freeze, mint authority' },
-  { name: 'get_quote', desc: 'Get swap quote via Bitget Wallet (110+ DEX routes)' },
+  { name: 'get_quote', desc: 'Get swap quote on-chain Wallet (110+ DEX routes)' },
   { name: 'get_launches', desc: 'List all currently tracked token launches' },
   { name: 'refresh_launches', desc: 'Force rescan for new launches' },
 ]
@@ -165,8 +165,8 @@ export function SkillShowcase() {
             >
               {[
                 { title: 'Graduation Prediction', desc: 'On-chain bonding curve velocity analysis with AI-powered scoring. Know which tokens will graduate before they do.', badge: 'Core' },
-                { title: 'Security Audits', desc: 'Automatic honeypot detection, mint/freeze authority checks, and holder concentration analysis via Bitget.', badge: 'Safety' },
-                { title: 'Gasless Trading', desc: 'Execute trades via Bitget Wallet with zero gas fees. 110+ DEX routes for best price execution.', badge: 'Trade' },
+                { title: 'Security Audits', desc: 'Automatic honeypot detection, mint/freeze authority checks, and holder concentration analysis on-chain.', badge: 'Safety' },
+                { title: 'On-Chain Trading', desc: 'Execute trades directly on Meteora DBC bonding curves via Solana transactions.', badge: 'Trade' },
                 { title: 'Real-time Scanner', desc: 'Monitor all new trends.fun launches on Solana. Detects new Meteora DBC pools within seconds.', badge: 'Live' },
               ].map((feature, i) => (
                 <motion.div
@@ -234,7 +234,7 @@ export function SkillShowcase() {
                 <div className="border-2 border-brand-200 rounded-xl p-4 bg-brand-50/30">
                   <p className="font-bold text-brand-700 text-xs uppercase tracking-wider mb-2">TrendSurfer Skill (npm package)</p>
                   <div className="grid grid-cols-3 gap-2">
-                    {['Scanner', 'Analyzer', 'Security', 'Trader', 'Meteora', 'Bitget'].map(m => (
+                    {['Scanner', 'Analyzer', 'Security', 'Trader', 'Meteora', 'x402'].map(m => (
                       <div key={m} className="bg-white rounded-lg px-2 py-1 text-xs text-center text-gray-600 font-mono">{m}</div>
                     ))}
                   </div>
@@ -270,7 +270,7 @@ export function SkillShowcase() {
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     { name: 'Solana', sub: 'On-chain data' },
-                    { name: 'Bitget', sub: 'Gasless trading' },
+                    { name: 'Meteora', sub: 'DBC Trading' },
                     { name: 'CommonStack', sub: 'AI analysis' },
                   ].map(s => (
                     <div key={s.name} className="border border-surface-200 rounded-lg p-2 bg-surface-50 text-center">
