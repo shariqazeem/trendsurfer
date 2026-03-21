@@ -1191,19 +1191,44 @@ export default function Dashboard() {
       </section>
 
       {/* ================================================================== */}
-      {/* SECTION 5: TRADING PERFORMANCE                                      */}
+      {/* SECTION 5: LIVE PnL VIA BITGET WALLET                                */}
       {/* ================================================================== */}
       <section className="bg-white border-b border-gray-100 py-16 sm:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionInView>
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Trading Performance</h2>
-              <p className="text-sm text-gray-500 mt-1">
-                Strategy: Buy pre-graduation, sell after DEX migration
-              </p>
+            {/* Hero PnL metric */}
+            <div className="text-center mb-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 mb-4">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wider">
+                  Bitget Trader Agent: Active &amp; Executing
+                </span>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900">Live PnL via Bitget Wallet</h2>
+              <p className="text-sm text-gray-500 mt-1">Gasless trades via Bitget API — gas deducted from input token</p>
+
+              {/* Large PnL number */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5 }}
+                className="mt-6"
+              >
+                <p
+                  className={`text-5xl sm:text-6xl font-bold tracking-tight ${pnl.totalPnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}
+                  style={{ fontFamily: MONO }}
+                >
+                  {pnl.totalPnl >= 0 ? '+' : ''}{pnl.totalPnl.toFixed(4)}
+                  <span className="text-2xl font-normal text-gray-300 ml-2">SOL</span>
+                </p>
+                <p className="text-xs text-gray-400 mt-2">
+                  {pnl.totalTrades} trades executed · {pnl.winRate.toFixed(0)}% win rate · {openPositions.length} open positions
+                </p>
+              </motion.div>
             </div>
 
-            {/* Performance Stats Row */}
+            {/* Stat cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <StatCard
                 label="Total PnL"
@@ -1256,6 +1281,7 @@ export default function Dashboard() {
                             </div>
                             <p className="text-xs text-gray-500 mt-0.5" style={{ fontFamily: MONO }}>
                               {pos.entryAmount} SOL @ score {pos.graduationScore}/100
+                              <span className="text-gray-300 ml-2">gasless via Bitget</span>
                             </p>
                           </div>
                         </div>
@@ -1269,7 +1295,7 @@ export default function Dashboard() {
             {/* Completed Trades */}
             {closedPositions.length > 0 && (
               <div className="mt-8">
-                <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Completed Trades</h3>
+                <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Completed Gasless Trades</h3>
                 <div className="space-y-2">
                   {closedPositions.slice(0, 8).map((pos) => {
                     const isWin = (pos.realizedPnlPercent ?? 0) > 0
@@ -1293,6 +1319,7 @@ export default function Dashboard() {
                                 <span className={`text-[10px] font-medium ${isWin ? 'text-emerald-600' : 'text-red-500'}`}>
                                   {isWin ? 'Graduated' : 'Stop-loss'}
                                 </span>
+                                <span className="text-[9px] text-gray-300">via Bitget API</span>
                               </div>
                               <p className="text-xs text-gray-500 mt-0.5" style={{ fontFamily: MONO }}>
                                 {pos.entryAmount} SOL @ {pos.entryPrice.toFixed(8)}
@@ -1314,10 +1341,16 @@ export default function Dashboard() {
 
             {/* Empty state */}
             {positions.length === 0 && (
-              <div className="bg-gray-50 rounded-xl border border-gray-200 p-12 text-center">
-                <p className="text-sm font-medium text-gray-900">No trades yet</p>
+              <div className="bg-gray-50 rounded-xl border border-gray-100 p-12 text-center">
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-emerald-500">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-gray-900">Awaiting first gasless trade via Bitget Wallet</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  The agent opens positions when a token scores above the threshold
+                  The agent executes trades automatically when tokens score above threshold.
+                  Zero SOL gas needed — Bitget deducts from input token.
                 </p>
               </div>
             )}
