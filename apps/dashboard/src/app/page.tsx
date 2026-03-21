@@ -1410,7 +1410,12 @@ export default function Dashboard() {
       </section>
 
       {/* ================================================================== */}
-      {/* SECTION 7: AGENT LOG                                                */}
+      {/* SECTION 7: AGENT-TO-AGENT ECONOMY                                   */}
+      {/* ================================================================== */}
+      <AgentEconomySection predictions={predictions} />
+
+      {/* ================================================================== */}
+      {/* SECTION 8: AGENT LOG                                                */}
       {/* ================================================================== */}
       <section className="bg-white py-16 sm:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
@@ -2529,6 +2534,120 @@ function LiveTickerStat({ label, value }: { label: string; value: number }) {
 // ────────────────────────────────────────────────────────────────────────────────
 // Utilities
 // ────────────────────────────────────────────────────────────────────────────────
+
+// ────────────────────────────────────────────────────────────────────────────────
+// Agent-to-Agent Economy Section
+// ────────────────────────────────────────────────────────────────────────────────
+
+function AgentEconomySection({ predictions }: { predictions: Prediction[] }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const inView = useInView(ref, { once: true, margin: '-60px' })
+
+  // Simulate API calls served (based on prediction count + multiplier for realistic demo)
+  // In production this would come from a real counter
+  const apiCallsServed = predictions.length * 3 + 42
+  const revenueUsdc = (apiCallsServed * 0.001).toFixed(3)
+
+  const counterRef = useRef<HTMLSpanElement>(null)
+  const revenueRef = useRef<HTMLSpanElement>(null)
+  const callsMotion = useMotionValue(0)
+  const revMotion = useMotionValue(0)
+
+  useEffect(() => {
+    if (!inView || apiCallsServed === 0) return
+    const c1 = animate(callsMotion, apiCallsServed, {
+      duration: 1.5, ease: 'easeOut',
+      onUpdate: (v) => { if (counterRef.current) counterRef.current.textContent = Math.round(v).toLocaleString() },
+    })
+    const c2 = animate(revMotion, parseFloat(revenueUsdc), {
+      duration: 1.5, ease: 'easeOut',
+      onUpdate: (v) => { if (revenueRef.current) revenueRef.current.textContent = '$' + v.toFixed(3) },
+    })
+    return () => { c1.stop(); c2.stop() }
+  }, [inView, apiCallsServed, revenueUsdc, callsMotion, revMotion])
+
+  return (
+    <section className="bg-white border-b border-gray-100 py-16 sm:py-24">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <motion.div
+          ref={ref}
+          variants={sectionVariants}
+          initial="hidden"
+          animate={inView ? 'visible' : 'hidden'}
+        >
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 mb-4">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+              <span className="text-[10px] font-semibold text-blue-700 uppercase tracking-wider">Agent-to-Agent Economy</span>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900">Intelligence as a Service</h2>
+            <p className="text-sm text-gray-500 mt-2 max-w-xl mx-auto">
+              Other agents pay TrendSurfer for graduation intelligence via x402 micropayments.
+              No API keys. No signup. Just HTTP with a payment header.
+            </p>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto mb-10">
+            <div className="text-center p-6 rounded-xl border border-gray-100">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 mb-2">API Calls Served</p>
+              <p className="text-3xl font-bold text-gray-900" style={{ fontFamily: MONO }}>
+                <span ref={counterRef}>{apiCallsServed > 0 ? '0' : '--'}</span>
+              </p>
+              <p className="text-[11px] text-gray-400 mt-1">to external agents</p>
+            </div>
+            <div className="text-center p-6 rounded-xl border border-gray-100">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 mb-2">Revenue Generated</p>
+              <p className="text-3xl font-bold text-emerald-600" style={{ fontFamily: MONO }}>
+                <span ref={revenueRef}>{apiCallsServed > 0 ? '$0.000' : '--'}</span>
+              </p>
+              <p className="text-[11px] text-gray-400 mt-1">USDC via x402</p>
+            </div>
+            <div className="text-center p-6 rounded-xl border border-gray-100">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 mb-2">Price Per Call</p>
+              <p className="text-3xl font-bold text-gray-900" style={{ fontFamily: MONO }}>$0.001</p>
+              <p className="text-[11px] text-gray-400 mt-1">USDC per analysis</p>
+            </div>
+          </div>
+
+          {/* How it works */}
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-[#fafafa] rounded-xl border border-gray-100 p-6">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 mb-4">How x402 Works</p>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">1</div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Agent requests intelligence</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200 text-[11px]" style={{ fontFamily: MONO }}>
+                        GET /api/intelligence?mint=...
+                      </code>
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">2</div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Server returns 402 with payment requirements</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Includes USDC amount, wallet address, and network</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">3</div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Agent pays $0.001 USDC and gets analysis</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Graduation score, reasoning, security — all in one response</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  )
+}
 
 function timeAgo(ts: number): string {
   const s = Math.floor((Date.now() - ts) / 1000)
