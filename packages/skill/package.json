@@ -1,6 +1,6 @@
 {
   "name": "trendsurfer-skill",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "The intelligence skill for trends.fun — graduation prediction, bonding curve analysis, security checks, and trade execution for Solana's tokenized tweet platform",
   "author": "TrendSurfer <https://github.com/shariqazeem/trendsurfer>",
   "license": "MIT",

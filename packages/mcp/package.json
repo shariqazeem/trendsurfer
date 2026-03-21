@@ -1,6 +1,6 @@
 {
   "name": "trendsurfer-mcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "MCP server for TrendSurfer — gives any AI agent trends.fun intelligence via Model Context Protocol",
   "author": "TrendSurfer <https://github.com/shariqazeem/trendsurfer>",
   "license": "MIT",
