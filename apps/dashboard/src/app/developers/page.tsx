@@ -52,13 +52,18 @@ const NAV_ITEMS: NavItem[] = [
 
 const mcpTools = [
   {
+    name: 'analyze_by_mint',
+    description: 'Analyze any token by mint address. Finds pool, checks graduation + security. The main tool.',
+    returnType: '{ graduation, security, token }',
+  },
+  {
     name: 'scan_launches',
     description: 'Scan trends.fun for new token launches with bonding curve progress.',
     returnType: 'ScanResult',
   },
   {
     name: 'analyze_graduation',
-    description: 'Analyze graduation probability. Returns 0-100 score, velocity, and reasoning.',
+    description: 'Full graduation analysis (requires poolAddress). Use analyze_by_mint if you only have a mint.',
     returnType: 'GraduationAnalysis',
   },
   {
@@ -150,10 +155,18 @@ const sdkCategories: SDKCategory[] = [
     category: 'Analysis',
     methods: [
       {
+        name: 'analyzeByMint',
+        signature: 'analyzeByMint(mint: string)',
+        returnType: 'Promise<{ graduation, security, token }>',
+        desc: 'One-shot analysis from just a mint address. Finds the Meteora DBC pool, gets metadata, runs graduation + security analysis. The easiest way to analyze any token.',
+        example: `const { graduation, security, token } = await skill.analyzeByMint(mint)
+// graduation.score → 87, security.safe → true`,
+      },
+      {
         name: 'analyzeGraduation',
         signature: 'analyzeGraduation(launch: TokenLaunch)',
         returnType: 'Promise<GraduationAnalysis>',
-        desc: 'Analyze graduation probability for a token. Returns a 0-100 score, velocity data, and reasoning.',
+        desc: 'Full graduation analysis for a token launch object. Use analyzeByMint() if you only have a mint address.',
         example: `const analysis = await skill.analyzeGraduation(token)
 // { score: 87, velocity: 'accelerating', reasoning: '...' }`,
       },
@@ -462,7 +475,7 @@ export default function DevelopersPage() {
               Dashboard
             </Link>
             <a
-              href="https://github.com/trendsurfer/skill"
+              href="https://github.com/shariqazeem/trendsurfer"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-900 rounded-md hover:bg-gray-50 transition-colors border border-gray-200"
@@ -594,7 +607,7 @@ export default function DevelopersPage() {
             </div>
 
             <div className="mt-6">
-              <p className="text-[13px] font-medium text-gray-700 mb-2">Quick example</p>
+              <p className="text-[13px] font-medium text-gray-700 mb-2">Analyze any token in one call</p>
               <CodeBlock
                 filename="agent.ts"
                 code={`import { TrendSurferSkill } from 'trendsurfer-skill'
@@ -603,7 +616,25 @@ const skill = new TrendSurferSkill({
   heliusApiKey: process.env.HELIUS_API_KEY,
 })
 
-// Scan -> Analyze -> Trade
+// One-shot analysis — just pass a mint address
+const { graduation, security, token } = await skill.analyzeByMint(
+  'EK7NyRkRmstUZ49g9Z5a6Y3vFDywJu1cCph3SsRcvb8N'
+)
+
+console.log(token.name)              // "CHILD HEALTH"
+console.log(graduation.score)        // 58
+console.log(graduation.curveProgress) // 100.0
+console.log(graduation.velocity)     // "stagnant"
+console.log(security.safe)           // true
+console.log(graduation.reasoning)    // "Bonding curve is 100.0% filled..."`}
+              />
+            </div>
+
+            <div className="mt-6">
+              <p className="text-[13px] font-medium text-gray-700 mb-2">Or scan + analyze + trade in a loop</p>
+              <CodeBlock
+                filename="trading-agent.ts"
+                code={`// Scan for new launches, analyze each, trade the best ones
 const { launches } = await skill.scanLaunches()
 
 for (const token of launches) {
