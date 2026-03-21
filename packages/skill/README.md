@@ -17,23 +17,21 @@ import { TrendSurferSkill } from 'trendsurfer-skill'
 
 const skill = new TrendSurferSkill({
   heliusApiKey: process.env.HELIUS_API_KEY,
-  heliusRpcUrl: process.env.HELIUS_RPC_URL,
 })
 
-// Scan for new trends.fun token launches
-const { launches } = await skill.scanLaunches()
+// One-shot analysis — just pass a mint address
+const { graduation, security, token } = await skill.analyzeByMint(
+  'EK7NyRkRmstUZ49g9Z5a6Y3vFDywJu1cCph3SsRcvb8N'
+)
+console.log(`${token.symbol}: ${graduation.score}/100 — ${graduation.velocity}`)
+console.log(`Safe: ${security.safe}`)
+console.log(graduation.reasoning)
 
-// Analyze graduation probability for a token
+// Or scan for new launches and analyze each
+const { launches } = await skill.scanLaunches()
 for (const launch of launches) {
   const analysis = await skill.analyzeGraduation(launch)
   console.log(`${launch.symbol}: ${analysis.score}/100 — ${analysis.velocity}`)
-  console.log(analysis.reasoning)
-}
-
-// Check token security before trading
-const security = await skill.checkSecurity(launches[0].mint)
-if (security.safe) {
-  console.log('Token passed security checks')
 }
 ```
 
@@ -73,6 +71,22 @@ Start continuous polling for new launches. The callback fires whenever new token
 Stop continuous polling.
 
 ### Analysis
+
+#### `skill.analyzeByMint(mint): Promise<{ graduation, security, token }>`
+
+**The easiest way to analyze a token.** Pass a Solana mint address, get back everything: graduation score, security check, and token metadata. Automatically finds the Meteora DBC pool, fetches metadata, and runs the full analysis pipeline.
+
+```typescript
+const result = await skill.analyzeByMint('EK7NyRkRmstUZ49g9Z5a6Y3vFDywJu1cCph3SsRcvb8N')
+// result.graduation.score → 87
+// result.graduation.curveProgress → 72.3
+// result.graduation.velocity → 'accelerating'
+// result.graduation.reasoning → 'Bonding curve is 72.3% filled...'
+// result.security.safe → true
+// result.token.name → '$Chhealth'
+```
+
+Throws if the mint is invalid or no Meteora DBC pool is found.
 
 #### `skill.analyzeGraduation(launch): Promise<GraduationAnalysis>`
 
@@ -184,7 +198,7 @@ Or add to your MCP config (Claude Desktop, Cursor, etc.):
 }
 ```
 
-Available MCP tools: `scan_launches`, `analyze_graduation`, `check_security`, `get_quote`, `get_launches`, `refresh_launches`.
+Available MCP tools: `analyze_by_mint`, `scan_launches`, `analyze_graduation`, `check_security`, `get_quote`, `get_launches`, `refresh_launches`.
 
 ## How It Works
 

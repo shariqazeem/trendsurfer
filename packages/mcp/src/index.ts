@@ -17,7 +17,7 @@ const skill = new TrendSurferSkill({
 const server = new Server(
   {
     name: 'trendsurfer',
-    version: '0.1.0',
+    version: '0.3.0',
   },
   {
     capabilities: {
@@ -30,9 +30,21 @@ const server = new Server(
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
+      name: 'analyze_by_mint',
+      description:
+        'Analyze any Solana token by mint address. Finds the Meteora DBC pool, checks graduation probability, holder distribution, and security. Returns score (0-100), curve progress, velocity, and detailed reasoning. This is the main tool — use it to evaluate any trends.fun token.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          mint: { type: 'string', description: 'Solana token mint address (base58)' },
+        },
+        required: ['mint'],
+      },
+    },
+    {
       name: 'scan_launches',
       description:
-        'Scan trends.fun for new token launches. Returns recently created tokens with their bonding curve progress.',
+        'Scan trends.fun for new token launches. Returns token name, symbol, mint address, pool address, curve progress %, and graduation status for each token found.',
       inputSchema: {
         type: 'object' as const,
         properties: {
@@ -46,7 +58,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: 'analyze_graduation',
       description:
-        'Analyze graduation probability for a trends.fun token. Returns a 0-100 score, velocity analysis, and reasoning.',
+        'Analyze graduation probability for a trends.fun token. Returns a 0-100 score, velocity analysis, and reasoning. Requires both mint and poolAddress. Use analyze_by_mint instead if you only have a mint address.',
       inputSchema: {
         type: 'object' as const,
         properties: {
@@ -61,7 +73,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: 'check_security',
       description:
-        'Check token security via Bitget Wallet API. Returns honeypot detection, mint/freeze authority, and warnings.',
+        'Check token security via Bitget Wallet API. Returns safe (boolean), honeypot detection, mint/freeze authority checks, and specific warning messages.',
       inputSchema: {
         type: 'object' as const,
         properties: {
@@ -73,7 +85,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: 'get_quote',
       description:
-        'Get a swap quote for buying or selling a token via Bitget Wallet (gasless).',
+        'Get a swap quote for buying or selling a token via Bitget Wallet. Gasless — gas is deducted from input token. Minimum trade ~$5 USD.',
       inputSchema: {
         type: 'object' as const,
         properties: {
@@ -89,7 +101,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           walletAddress: {
             type: 'string',
-            description: 'Wallet address for the quote',
+            description: 'Wallet address for the quote (optional — omit if you just want a price estimate)',
           },
           slippage: {
             type: 'string',
@@ -125,6 +137,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   try {
     switch (name) {
+      case 'analyze_by_mint': {
+        const result = await skill.analyzeByMint(args!.mint as string)
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              token: { name: result.token.name, symbol: result.token.symbol, mint: result.token.mint },
+              graduation: {
+                score: result.graduation.score,
+                curveProgress: result.graduation.curveProgress,
+                velocity: result.graduation.velocity,
+                reasoning: result.graduation.reasoning,
+              },
+              security: {
+                safe: result.security.safe,
+                honeypot: result.security.honeypot,
+                warnings: result.security.warnings,
+              },
+            }, null, 2),
+          }],
+        }
+      }
+
       case 'scan_launches': {
         const result = await skill.scanLaunches(args?.limit as number)
         return {
@@ -171,11 +206,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'get_quote': {
+        const walletAddress = (args?.walletAddress as string) || ''
+        if (!walletAddress) {
+          throw new Error('walletAddress is required for get_quote. Provide the Solana wallet address that will execute the swap.')
+        }
         const quote = await skill.getQuote({
           tokenMint: args!.tokenMint as string,
           side: args!.side as 'buy' | 'sell',
           amount: args!.amount as string,
-          walletAddress: (args?.walletAddress as string) || '',
+          walletAddress,
           slippage: args?.slippage as string,
         })
         return {

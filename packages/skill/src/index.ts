@@ -18,6 +18,8 @@ import {
 } from './analyzer'
 import { checkTokenSecurity } from './security'
 import { getTradeQuote, executeTrade, getTradeStatus } from './trader'
+import { findPoolsByMint, getPoolState } from '../../../lib/meteora'
+import { getAsset } from '../../../lib/helius'
 import type {
   TokenLaunch,
   GraduationAnalysis,
@@ -50,6 +52,90 @@ export class TrendSurferSkill {
     if (config.poolConfigAddress) {
       setPoolConfigFilter(config.poolConfigAddress)
     }
+  }
+
+  // ── Validation ──
+
+  /** Validate a Solana mint address (base58, 32-44 chars) */
+  private async validateMint(mint: string): Promise<void> {
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      throw new Error('Invalid Solana mint address: must be 32-44 characters')
+    }
+    try {
+      const { PublicKey } = await import('@solana/web3.js')
+      new PublicKey(mint)
+    } catch {
+      throw new Error('Invalid Solana mint address: not valid base58')
+    }
+  }
+
+  // ── One-shot Analysis ──
+
+  /** One-shot analysis: pass a mint address, get graduation score + security check.
+   *  This is the killer feature — finds the pool, fetches metadata, and returns
+   *  a combined graduation analysis + security report in one call.
+   *
+   *  @param mint - Solana token mint address (base58, 32-44 chars)
+   *  @returns Object with `graduation` (GraduationAnalysis), `security` (SecurityCheck), and `token` (TokenLaunch)
+   *  @throws If mint is invalid or no Meteora DBC pool is found
+   */
+  async analyzeByMint(mint: string): Promise<{
+    graduation: GraduationAnalysis
+    security: SecurityCheck
+    token: TokenLaunch
+  }> {
+    await this.validateMint(mint)
+
+    // Find pool
+    const poolAddresses = await findPoolsByMint(mint)
+    if (!poolAddresses || poolAddresses.length === 0) {
+      throw new Error(`No Meteora DBC pool found for mint ${mint}`)
+    }
+
+    // Get full pool state for curve progress and graduation status
+    const poolState = await getPoolState(poolAddresses[0])
+    const curveProgress = poolState?.curveProgress ?? 0
+    const graduated = poolState?.graduated ?? false
+
+    // Get metadata
+    let name = 'Unknown'
+    let symbol = 'UNK'
+    let tweetUrl: string | undefined
+    let tweetAuthor: string | undefined
+    try {
+      const asset = await getAsset(mint)
+      if (asset) {
+        name = asset.content?.metadata?.name || name
+        symbol = asset.content?.metadata?.symbol || symbol
+        const extUrl = asset.content?.links?.external_url || ''
+        if (extUrl.includes('x.com') || extUrl.includes('twitter.com')) {
+          tweetUrl = extUrl
+        }
+        const desc = asset.content?.metadata?.description || ''
+        const authorMatch = desc.match(/@(\w+)/)
+        if (authorMatch) tweetAuthor = authorMatch[1]
+      }
+    } catch { /* metadata optional */ }
+
+    const token: TokenLaunch = {
+      mint,
+      poolAddress: poolAddresses[0],
+      name,
+      symbol,
+      tweetUrl,
+      tweetAuthor,
+      createdAt: Date.now(),
+      curveProgress,
+      graduated,
+    }
+
+    // Run graduation analysis + security check in parallel
+    const [graduation, security] = await Promise.all([
+      this.analyzeGraduation(token),
+      this.checkSecurity(mint),
+    ])
+
+    return { graduation, security, token }
   }
 
   // ── Scanning ──
@@ -124,12 +210,18 @@ export class TrendSurferSkill {
 
   /** Check token security via Bitget Wallet API */
   async checkSecurity(mint: string): Promise<SecurityCheck> {
+    await this.validateMint(mint)
     return checkTokenSecurity(mint)
   }
 
   // ── Trading ──
 
-  /** Get a swap quote */
+  /** Get a swap quote from Bitget Wallet API.
+   *
+   *  @returns The Bitget quote response containing route info, expected output amount,
+   *  price impact, and transaction data needed for execution. Shape depends on Bitget API
+   *  but typically includes `{ toAmount, priceImpact, route, txData }`.
+   */
   async getQuote(params: {
     tokenMint: string
     tokenSymbol?: string
@@ -155,7 +247,12 @@ export class TrendSurferSkill {
     return executeTrade(params)
   }
 
-  /** Check trade execution status */
+  /** Check trade execution status via Bitget Wallet API.
+   *
+   *  @param orderId - The order ID returned from `executeTrade`
+   *  @returns Order status object from Bitget, typically `{ orderId, status, txHash, ... }`
+   *  where status is one of 'pending' | 'confirmed' | 'failed'.
+   */
   async getTradeStatus(orderId: string) {
     return getTradeStatus(orderId)
   }
