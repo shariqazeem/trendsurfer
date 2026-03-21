@@ -1191,7 +1191,7 @@ export default function Dashboard() {
       </section>
 
       {/* ================================================================== */}
-      {/* SECTION 5: LIVE PnL VIA BITGET WALLET                                */}
+      {/* SECTION 5: LIVE PnL                                                   */}
       {/* ================================================================== */}
       <section className="bg-white border-b border-gray-100 py-16 sm:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
@@ -1201,11 +1201,11 @@ export default function Dashboard() {
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 mb-4">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wider">
-                  Bitget Trader Agent: Active &amp; Executing
+                  Trading Agent: Active
                 </span>
               </div>
-              <h2 className="text-xl font-semibold text-gray-900">Live PnL via Bitget Wallet</h2>
-              <p className="text-sm text-gray-500 mt-1">Gasless trades via Bitget API — gas deducted from input token</p>
+              <h2 className="text-xl font-semibold text-gray-900">Live PnL</h2>
+              <p className="text-sm text-gray-500 mt-1">Direct on-chain trades via Meteora DBC</p>
 
               {/* Large PnL number */}
               <motion.div
@@ -1281,7 +1281,7 @@ export default function Dashboard() {
                             </div>
                             <p className="text-xs text-gray-500 mt-0.5" style={{ fontFamily: MONO }}>
                               {pos.entryAmount} SOL @ score {pos.graduationScore}/100
-                              <span className="text-gray-300 ml-2">gasless via Bitget</span>
+                              <span className="text-gray-300 ml-2">via Meteora DBC</span>
                             </p>
                           </div>
                         </div>
@@ -1295,7 +1295,7 @@ export default function Dashboard() {
             {/* Completed Trades */}
             {closedPositions.length > 0 && (
               <div className="mt-8">
-                <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Completed Gasless Trades</h3>
+                <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Completed Trades</h3>
                 <div className="space-y-2">
                   {closedPositions.slice(0, 8).map((pos) => {
                     const isWin = (pos.realizedPnlPercent ?? 0) > 0
@@ -1319,7 +1319,7 @@ export default function Dashboard() {
                                 <span className={`text-[10px] font-medium ${isWin ? 'text-emerald-600' : 'text-red-500'}`}>
                                   {isWin ? 'Graduated' : 'Stop-loss'}
                                 </span>
-                                <span className="text-[9px] text-gray-300">via Bitget API</span>
+                                <span className="text-[9px] text-gray-300">on-chain</span>
                               </div>
                               <p className="text-xs text-gray-500 mt-0.5" style={{ fontFamily: MONO }}>
                                 {pos.entryAmount} SOL @ {pos.entryPrice.toFixed(8)}
@@ -1347,10 +1347,10 @@ export default function Dashboard() {
                     <path d="M12 2v20M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
-                <p className="text-sm font-medium text-gray-900">Awaiting first gasless trade via Bitget Wallet</p>
+                <p className="text-sm font-medium text-gray-900">Awaiting first trade via Meteora DBC</p>
                 <p className="text-xs text-gray-500 mt-1">
                   The agent executes trades automatically when tokens score above threshold.
-                  Zero SOL gas needed — Bitget deducts from input token.
+                  Trades execute directly on Meteora Dynamic Bonding Curve.
                 </p>
               </div>
             )}
@@ -1519,7 +1519,7 @@ export default function Dashboard() {
             <Link href="/developers" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Docs</Link>
             <Link href="/sandbox" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Sandbox</Link>
           </div>
-          <p className="text-[10px] text-gray-300 mt-6">Built for Agent Talent Show 2026 · Solana · Bitget Wallet · trends.fun · Helius · MCP · x402</p>
+          <p className="text-[10px] text-gray-300 mt-6">Built for Agent Talent Show 2026 · Solana · Meteora DBC · trends.fun · Helius · MCP · x402</p>
         </div>
       </footer>
     </div>

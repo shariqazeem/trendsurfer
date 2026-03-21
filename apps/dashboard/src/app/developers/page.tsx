@@ -68,12 +68,12 @@ const mcpTools = [
   },
   {
     name: 'check_security',
-    description: 'Check token security via Bitget Wallet API. Honeypot detection, mint/freeze authority.',
+    description: 'Check token security (honeypot, mint/freeze authority).',
     returnType: 'SecurityCheck',
   },
   {
     name: 'get_quote',
-    description: 'Get a gasless swap quote for buying or selling a token via Bitget Wallet.',
+    description: 'Get a swap quote for a token on Meteora DBC.',
     returnType: 'SwapQuote',
   },
   {
@@ -201,7 +201,7 @@ const sdkCategories: SDKCategory[] = [
         name: 'checkSecurity',
         signature: 'checkSecurity(mint: string)',
         returnType: 'Promise<SecurityCheck>',
-        desc: 'Check token safety via Bitget Wallet API. Detects honeypots, mint/freeze authority, and other warnings.',
+        desc: 'Check token safety on-chain. Detects honeypots, mint/freeze authority, and other warnings.',
         example: `const security = await skill.checkSecurity(mint)
 if (security.safe) { /* proceed */ }`,
       },
@@ -215,7 +215,7 @@ if (security.safe) { /* proceed */ }`,
         name: 'getQuote',
         signature: 'getQuote(params: QuoteParams)',
         returnType: 'Promise<SwapQuote>',
-        desc: 'Get a gasless swap quote for buying or selling a token via Bitget Wallet.',
+        desc: 'Get a swap quote for buying or selling a token on Meteora DBC.',
         example: `const quote = await skill.getQuote({
   tokenMint: mint,
   side: 'buy',
@@ -226,7 +226,7 @@ if (security.safe) { /* proceed */ }`,
         name: 'executeTrade',
         signature: 'executeTrade(params: TradeParams)',
         returnType: 'Promise<TradeExecution>',
-        desc: 'Execute a gasless trade via Bitget Wallet. Handles quote, confirm, sign, and send.',
+        desc: 'Execute a trade on Meteora DBC. Handles quote, confirm, sign, and send.',
         example: `const trade = await skill.executeTrade({
   tokenMint: mint,
   side: 'buy',
@@ -593,7 +593,7 @@ export default function DevelopersPage() {
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Getting Started</h1>
             <p className="text-[15px] text-gray-500 mt-2 leading-relaxed">
               Add trends.fun intelligence to any AI agent in 2 minutes. Scan token launches,
-              predict bonding curve graduations, check security, and execute gasless trades.
+              predict bonding curve graduations, check security, and execute trades on Meteora DBC.
             </p>
 
             <div className="mt-6">
@@ -974,7 +974,7 @@ const data = await paid.json()
                   {[
                     { label: 'Your Agent', sub: 'Claude, GPT, any LLM' },
                     { label: 'TrendSurfer', sub: 'SDK or MCP Server' },
-                    { label: 'Helius + Bitget', sub: 'Data + Execution' },
+                    { label: 'Helius RPC', sub: 'Data + Execution' },
                     { label: 'Solana', sub: 'Meteora DBC' },
                   ].map((node, i, arr) => (
                     <div key={node.label} className="flex items-center gap-3">
@@ -996,7 +996,7 @@ const data = await paid.json()
                   {[
                     { label: 'Your Agent', sub: 'Claude, GPT, any LLM' },
                     { label: 'TrendSurfer', sub: 'SDK or MCP Server' },
-                    { label: 'Helius + Bitget', sub: 'Data + Execution' },
+                    { label: 'Helius RPC', sub: 'Data + Execution' },
                     { label: 'Solana', sub: 'Meteora DBC' },
                   ].map((node, i, arr) => (
                     <div key={node.label} className="flex flex-col items-center gap-2 w-full">
@@ -1022,8 +1022,8 @@ const data = await paid.json()
                   <li>Your agent calls the SDK or MCP tool to scan for new trends.fun launches</li>
                   <li>TrendSurfer reads on-chain Meteora DBC pool state via Helius RPC</li>
                   <li>Bonding curve progress, velocity, and graduation probability are computed</li>
-                  <li>Security checks run through the Bitget Wallet API</li>
-                  <li>Trade execution flows through Bitget for gasless swaps on Solana</li>
+                  <li>Security checks analyze on-chain token authority and permissions</li>
+                  <li>Trade execution flows directly through Meteora DBC on Solana</li>
                 </ol>
               </div>
 
@@ -1054,8 +1054,8 @@ const data = await paid.json()
                   <li className="flex items-start gap-2">
                     <span className="text-gray-300 mt-0.5">--</span>
                     <span>
-                      <strong className="text-gray-600">Gasless trading:</strong>{' '}
-                      Via Bitget EIP-7702, gas deducted from input token (min ~$5 USD)
+                      <strong className="text-gray-600">Direct on-chain trading:</strong>{' '}
+                      Swaps executed directly on Meteora DBC pools via Solana transactions
                     </span>
                   </li>
                 </ul>

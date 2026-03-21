@@ -1,6 +1,6 @@
 # TrendSurfer
 
-**The intelligence skill for trends.fun — graduation prediction, bonding curve analysis, tweet scoring, and gasless trade execution for any AI agent.**
+**The intelligence skill for trends.fun — graduation prediction, bonding curve analysis, tweet scoring, and trade execution via Meteora DBC for any AI agent.**
 
 [![npm](https://img.shields.io/npm/v/trendsurfer-skill)](https://www.npmjs.com/package/trendsurfer-skill)
 [![npm](https://img.shields.io/npm/v/trendsurfer-mcp)](https://www.npmjs.com/package/trendsurfer-mcp)
@@ -38,13 +38,12 @@ const analysis = await skill.analyzeGraduation(launch)
 // Check security (honeypot, mint authority, freeze)
 const security = await skill.checkSecurity(mint)
 
-// Execute gasless trade via Bitget Wallet
+// Execute trade directly on Meteora DBC bonding curve
 const trade = await skill.executeTrade({
   tokenMint: mint,
   side: 'buy',
   amountSol: '0.1',
   walletAddress: wallet,
-  gasless: true,
   signTransaction: signer,
 })
 ```
@@ -88,7 +87,7 @@ Every token gets a **0-100 graduation score** based on:
 |--------|--------|--------|
 | Curve Progress | 25% | On-chain Meteora DBC pool state |
 | Fill Velocity | 30% | Time-series bonding curve snapshots |
-| Security Audit | 20% | Bitget Wallet API (honeypot, authorities) |
+| Security Audit | 20% | On-chain analysis (honeypot, authorities) |
 | Social Signal | 15% | Holder count × curve momentum (tweet virality proxy) |
 | Holder Distribution | 10% | `getTokenLargestAccounts` RPC |
 
@@ -159,7 +158,7 @@ npm run mcp
 | Skill SDK | TypeScript, npm package |
 | MCP Server | @modelcontextprotocol/sdk |
 | AI Analysis | CommonStack API (Gemini Flash) |
-| Trading | Bitget Wallet REST API (gasless) |
+| Trading | Meteora DBC SDK (direct on-chain) |
 | On-Chain | Helius RPC, Meteora DBC program |
 | Dashboard | Next.js 14, Tailwind CSS, Framer Motion |
 | Database | Turso (libSQL) |
@@ -172,4 +171,4 @@ Built by [@AzeemShariq](https://x.com/AzeemShariq)
 
 ---
 
-Built with Solana, Bitget Wallet, trends.fun, Helius, CommonStack AI, x402, MCP
+Built with Solana, Meteora DBC, trends.fun, Helius, CommonStack AI, x402, MCP

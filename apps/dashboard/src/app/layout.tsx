@@ -5,8 +5,8 @@ const siteUrl = 'https://solana-trends-agent.vercel.app'
 
 export const metadata: Metadata = {
   title: 'TrendSurfer — The Intelligence Skill for trends.fun',
-  description: 'AI-powered graduation prediction for trends.fun tokens. Reusable TypeScript SDK + MCP server for any AI agent. Scan launches, analyze bonding curves, detect graduations, execute gasless trades via Bitget Wallet.',
-  keywords: ['trendsurfer', 'trends.fun', 'solana', 'meteora', 'bonding curve', 'graduation', 'mcp', 'ai agent', 'trading', 'bitget'],
+  description: 'AI-powered graduation prediction for trends.fun tokens. Reusable TypeScript SDK + MCP server for any AI agent. Scan launches, analyze bonding curves, detect graduations, trade on Meteora DBC. Pay per analysis via x402.',
+  keywords: ['trendsurfer', 'trends.fun', 'solana', 'meteora', 'bonding curve', 'graduation', 'mcp', 'ai agent', 'x402', 'agent-to-agent'],
   authors: [{ name: 'Shariq Azeem', url: 'https://x.com/AzeemShariq' }],
   openGraph: {
     title: 'TrendSurfer — The Intelligence Skill for trends.fun',

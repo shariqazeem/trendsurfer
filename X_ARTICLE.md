@@ -23,7 +23,7 @@ TrendSurfer is the first intelligence skill for trends.fun. Not a bot. Not a sin
 - **Analyze tweets** — since every token IS a tokenized tweet, we score social signals (viral/trending/moderate)
 - **Check** token security (honeypot detection, mint authority, freeze risk)
 - **Track graduations** — detect when tokens graduate and measure prediction accuracy
-- **Execute** gasless trades via Bitget Wallet API
+- **Trade** directly on Meteora DBC bonding curves
 
 Three lines of code. That is all it takes.
 
@@ -61,7 +61,7 @@ TrendSurfer reads the raw on-chain pool state via Helius RPC and computes:
 1. **Curve Progress** (25%) — How full is the bonding curve? (0-100%)
 2. **Fill Velocity** (30%) — Is the curve filling faster or slower over time? Exponential backoff protects RPC limits.
 3. **Social Signal** (15%) — Since tokens ARE tweets, we derive virality from holder count + curve momentum. Viral tweets from high-follower authors graduate faster.
-4. **Security Audit** (20%) — Honeypot detection, mint/freeze authority checks via Bitget Wallet API.
+4. **Security Audit** (20%) — Honeypot detection, mint/freeze authority checks via on-chain analysis.
 5. **Holder Distribution** (10%) — How concentrated is the token? High concentration = rug risk.
 6. **AI Reasoning** — Gemini Flash analyzes all signals including tweet content and produces natural language reasoning.
 
@@ -81,7 +81,7 @@ TrendSurfer is a full-stack intelligence platform. Here is every layer:
 
 **The Interactive Sandbox** — Paste any Solana token mint address and get a live graduation analysis in seconds. Real on-chain data, AI-enhanced scoring (Gemini Flash), tweet content analysis, social signal detection, Solscan links. Shareable URLs let you share analysis results. Judges: try it yourself at [solana-trends-agent.vercel.app](https://solana-trends-agent.vercel.app).
 
-**The Autonomous Agent** — A trading agent that uses TrendSurfer's own skill to scan, analyze, and trade trends.fun tokens 24/7. It runs a continuous loop: scan launches, score each token, buy above threshold via Bitget Wallet (gasless), monitor for graduation, sell after migration. It also detects graduation events and tracks prediction accuracy.
+**The Autonomous Agent** — A trading agent that uses TrendSurfer's own skill to scan, analyze, and trade trends.fun tokens 24/7. It runs a continuous loop: scan launches, score each token, buy directly on Meteora DBC bonding curves, monitor for graduation, sell after migration. It also detects graduation events and tracks prediction accuracy.
 
 **The Dashboard** — A Next.js app showing:
 - **Agent Live Decisions** — see what the agent is watching and thinking in real-time
@@ -121,11 +121,11 @@ Clean white design, Framer Motion animations, mobile responsive.
   └────────────────┘
 ```
 
-The skill talks to Solana (Helius RPC for on-chain Meteora DBC data), Bitget Wallet API (security audits + gasless trade execution), and AI models via CommonStack (graduation reasoning). The agent and dashboard are consumers of the skill — just like any third-party agent would be.
+The skill talks to Solana (Helius RPC for on-chain Meteora DBC data), executes trades directly on Meteora bonding curves, and uses AI models via CommonStack for graduation reasoning. The agent and dashboard are consumers of the skill — just like any third-party agent would be.
 
 ## Technical Highlights
 
-**Gasless Trading** — Bitget Wallet's swap API deducts gas from the input token. Zero SOL balance required. This removes the biggest friction point for autonomous agents.
+**Direct On-Chain Trading** — Trades execute directly on Meteora Dynamic Bonding Curves via the official DBC SDK. No intermediary APIs — pure on-chain execution with real Solana transactions.
 
 **Real On-Chain Data** — We deserialize Meteora DBC pool accounts directly via Helius RPC. No third-party APIs, no scrapers. The bonding curve state is the source of truth. Smart RPC routing uses public Solana RPC for heavy `getProgramAccounts` and Helius for fast single-account reads.
 
@@ -133,7 +133,7 @@ The skill talks to Solana (Helius RPC for on-chain Meteora DBC data), Bitget Wal
 
 **x402 Micropayments** — The intelligence endpoint returns HTTP 402 with payment requirements. Any x402-compatible client can pay and access analysis programmatically. This is native agent-to-agent commerce.
 
-**TypeScript Throughout** — Bitget's official SDK is Python-only. TrendSurfer provides the first TypeScript wrapper for their Wallet API, making it accessible to the massive Node.js/TypeScript agent ecosystem.
+**TypeScript Throughout** — The entire stack is TypeScript. SDK on npm, MCP server, Next.js dashboard — all accessible to the massive Node.js/TypeScript agent ecosystem.
 
 **Graduation Event Tracking** — The agent detects when tokens graduate and records prediction accuracy. This builds a verifiable track record over time — not just predictions, but proven outcomes.
 
@@ -167,6 +167,6 @@ Dashboard: [solana-trends-agent.vercel.app](https://solana-trends-agent.vercel.a
 Sandbox: [solana-trends-agent.vercel.app/sandbox](https://solana-trends-agent.vercel.app/sandbox)
 GitHub: [github.com/shariqazeem/trendsurfer](https://github.com/shariqazeem/trendsurfer)
 
-Built with Solana, Bitget Wallet, trends.fun, Helius, CommonStack AI, x402.
+Built with Solana, Meteora DBC, trends.fun, Helius, CommonStack AI, x402.
 
 #AgentTalentShow

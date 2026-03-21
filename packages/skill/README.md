@@ -2,7 +2,7 @@
 
 The first intelligence skill for [trends.fun](https://trends.fun) — graduation prediction, bonding curve analysis, and trade execution for Solana AI agents.
 
-TrendSurfer gives any AI agent the ability to monitor trends.fun token launches, predict which tokens will graduate from their bonding curve to a full DEX pool, and execute trades via Bitget Wallet's gasless swap API.
+TrendSurfer gives any AI agent the ability to monitor trends.fun token launches, predict which tokens will graduate from their bonding curve to a full DEX pool, and execute trades via Meteora DBC's bonding curve.
 
 ## Install
 
@@ -115,13 +115,13 @@ Get all recorded velocity snapshots for a token.
 
 #### `skill.checkSecurity(mint): Promise<SecurityCheck>`
 
-Check token security via Bitget Wallet API. Returns honeypot detection, mint/freeze authority status, and warning list.
+Check token security via on-chain analysis. Returns honeypot detection, mint/freeze authority status, and warning list.
 
 ### Trading
 
 #### `skill.getQuote(params): Promise<SwapQuote>`
 
-Get a swap quote for buying or selling a token via Bitget Wallet.
+Get a swap quote for buying or selling a token on Meteora DBC.
 
 ```typescript
 const quote = await skill.getQuote({
@@ -135,7 +135,7 @@ const quote = await skill.getQuote({
 
 #### `skill.executeTrade(params): Promise<TradeExecution>`
 
-Execute a full trade via Bitget Wallet (gasless — gas is deducted from the input token).
+Execute a full trade on Meteora DBC (gasless — gas is deducted from the input token).
 
 #### `skill.getTradeStatus(orderId): Promise<OrderDetails>`
 
@@ -204,14 +204,14 @@ Available MCP tools: `analyze_by_mint`, `scan_launches`, `analyze_graduation`, `
 
 trends.fun tokens are tokenized tweets built on Meteora's Dynamic Bonding Curve (DBC). When enough buy pressure fills the bonding curve, the token "graduates" — liquidity auto-migrates to a full Meteora DAMM pool, typically causing a price jump.
 
-TrendSurfer reads on-chain DBC pool state via Helius RPC, tracks curve fill velocity over time, runs security audits via Bitget Wallet API, and produces a composite graduation probability score. This intelligence can power autonomous trading agents, alert bots, or analytics dashboards.
+TrendSurfer reads on-chain DBC pool state via Helius RPC, tracks curve fill velocity over time, runs security audits via on-chain analysis, and produces a composite graduation probability score. This intelligence can power autonomous trading agents, alert bots, or analytics dashboards.
 
 ## Links
 
 - [GitHub](https://github.com/shariqazeem/trendsurfer)
 - [trends.fun](https://trends.fun)
 - [Meteora DBC Docs](https://docs.meteora.ag/dynamic-bonding-curve)
-- [Bitget Wallet API](https://github.com/bitget-wallet-ai-lab/bitget-wallet-skill)
+- [Meteora DBC](https://docs.meteora.ag/dynamic-bonding-curve)
 
 ## License
 

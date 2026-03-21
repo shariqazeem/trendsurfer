@@ -44,13 +44,13 @@ Scan trends.fun for new token launches. Returns recently created tokens with bon
 
 ### `check_security`
 
-Check token security via Bitget Wallet API. Returns honeypot detection, mint/freeze authority, and warnings.
+Check token security. Returns honeypot detection, mint/freeze authority, and warnings.
 
 **Input:** `{ mint: "token-mint-address" }`
 
 ### `get_quote`
 
-Get a swap quote for buying or selling a token via Bitget Wallet. Gasless — gas is deducted from input token.
+Get a swap quote for buying or selling a token on Meteora DBC.
 
 **Input:** `{ tokenMint, side: "buy"|"sell", amount, walletAddress?, slippage? }`
 
