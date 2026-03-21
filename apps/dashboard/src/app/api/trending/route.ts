@@ -7,37 +7,23 @@ export const maxDuration = 10
 function getDb() {
   const url = process.env.TURSO_DATABASE_URL?.trim()
   const token = process.env.TURSO_AUTH_TOKEN?.trim()
-  if (url) {
-    return createClient({ url, authToken: token })
-  }
+  if (url) return createClient({ url, authToken: token })
   return createClient({ url: 'file:./data/trendsurfer.db' })
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
-  ])
+function withTimeout<T>(p: Promise<T>, ms: number, fb: T): Promise<T> {
+  return Promise.race([p, new Promise<T>((r) => setTimeout(() => r(fb), ms))])
 }
 
 export async function GET() {
   try {
     const db = getDb()
-
-    // Simple query — get recent high-curve tokens, deduplicate in JS
+    // Grab latest 100 predictions (fast with index), sort/filter in JS
     const result = await withTimeout(
-      db.execute({
-        sql: `SELECT * FROM predictions
-              WHERE created_at > ?
-              ORDER BY curve_progress DESC, score DESC
-              LIMIT 30`,
-        args: [Date.now() - 24 * 60 * 60 * 1000],
-      }),
-      5000,
-      { rows: [] } as any
+      db.execute('SELECT * FROM predictions ORDER BY created_at DESC LIMIT 100'),
+      5000, { rows: [] } as any
     )
 
-    // Deduplicate by mint in JS (faster than SQL subquery on Turso)
     const seen = new Set<string>()
     const tokens = result.rows
       .filter((row: any) => {
@@ -45,18 +31,16 @@ export async function GET() {
         seen.add(row.mint)
         return true
       })
+      .sort((a: any, b: any) => (b.curve_progress || 0) - (a.curve_progress || 0))
       .slice(0, 6)
       .map((row: any) => ({
-        mint: row.mint,
-        symbol: row.symbol,
-        name: row.name,
-        score: row.score,
-        curveProgress: row.curve_progress,
+        mint: row.mint, symbol: row.symbol, name: row.name,
+        score: row.score, curveProgress: row.curve_progress,
         prediction: row.prediction,
       }))
 
     return NextResponse.json({ tokens })
-  } catch (error: any) {
+  } catch {
     return NextResponse.json({ tokens: [] }, { status: 200 })
   }
 }

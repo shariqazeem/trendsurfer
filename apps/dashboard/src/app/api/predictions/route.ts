@@ -26,7 +26,7 @@ export async function GET() {
 
     const result = await withTimeout(
       db.execute('SELECT * FROM predictions ORDER BY created_at DESC LIMIT 50'),
-      5000,
+      8000,
       { rows: [] } as any
     )
 
