@@ -26,7 +26,7 @@ function getModel(): string {
   return process.env.COMMONSTACK_MODEL || DEFAULT_MODEL
 }
 
-const SYSTEM_PROMPT = `You predict trends.fun token graduations. Tokens are tokenized tweets on Meteora DBC (Solana). When bonding curve fills → graduates to DEX → price jumps. Tweet quality matters — viral tweets from influential authors graduate faster. Respond with JSON only: {"score": 0-100, "reasoning": "2 sentences", "prediction": "will_graduate|unlikely|watching"}`
+const SYSTEM_PROMPT = `You predict trends.fun token graduations. Tokens are tokenized tweets on Meteora DBC (Solana). When bonding curve fills → graduates to DEX → price jumps. Tweet quality matters — viral tweets from influential authors graduate faster. CRITICAL RULE: If the Bonding curve progress is 100% or greater, your prediction MUST be 'will_graduate' regardless of other factors. Respond with JSON only: {"score": 0-100, "reasoning": "2 sentences", "prediction": "will_graduate|unlikely|watching"}`
 
 export async function analyzeWithClaude(
   launch: TokenLaunch,
@@ -117,7 +117,7 @@ Respond in this exact JSON format (no markdown, no code blocks, just raw JSON):
       score,
       reasoning: onChainAnalysis.reasoning,
       prediction:
-        score >= 75 ? 'will_graduate' : score >= 40 ? 'watching' : 'unlikely',
+        onChainAnalysis.curveProgress >= 100 || score >= 75 ? 'will_graduate' : score >= 40 ? 'watching' : 'unlikely',
     }
   }
 }

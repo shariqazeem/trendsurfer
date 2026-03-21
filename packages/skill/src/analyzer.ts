@@ -193,6 +193,11 @@ function calculateCompositeScore(factors: {
   holderCount: number
   topHolderConcentration: number
 }): number {
+  // If curve is 100% filled, graduation is essentially guaranteed
+  if (factors.curveProgress >= 100) {
+    return Math.max(95, 100 - (100 - factors.securityScore))
+  }
+
   // Weighted composite score
   const weights = {
     curveProgress: 0.3, // How close to graduation
