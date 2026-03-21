@@ -6,7 +6,7 @@ function getHeliusApiKey(): string {
   return process.env.HELIUS_API_KEY || ''
 }
 
-function getHeliusRpcUrl(): string {
+export function getHeliusRpcUrl(): string {
   return process.env.HELIUS_RPC_URL || `https://mainnet.helius-rpc.com/?api-key=${getHeliusApiKey()}`
 }
 

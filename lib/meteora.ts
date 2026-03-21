@@ -6,7 +6,7 @@
 // VirtualPool is 424 bytes, zero_copy (repr(C)).
 
 import { PublicKey } from '@solana/web3.js'
-import { getAccountInfo, getConnection, getProgramTransactions } from './helius'
+import { getAccountInfo, getConnection, getProgramTransactions, getHeliusRpcUrl } from './helius'
 import type { BondingCurveState } from './types'
 
 export const METEORA_DBC_PROGRAM_ID = new PublicKey(
@@ -258,40 +258,79 @@ export async function getRecentLaunches(limit: number = 50) {
   return signatures
 }
 
+// Helper: Use Helius getProgramAccountsV2 (paginated) instead of standard
+// getProgramAccounts which Helius deprioritizes for large programs like Meteora DBC.
+async function getProgramAccountsV2(
+  filters: Array<{ dataSize: number } | { memcmp: { offset: number; bytes: string } }>,
+  limit: number = 100,
+): Promise<string[]> {
+  const rpcUrl = getHeliusRpcUrl()
+  const pubkeys: string[] = []
+  let paginationKey: string | null = null
+
+  do {
+    const params: any[] = [
+      METEORA_DBC_PROGRAM_ID.toBase58(),
+      {
+        encoding: 'base64',
+        filters,
+        dataSlice: { offset: 0, length: 0 },
+        limit,
+        ...(paginationKey ? { paginationKey } : {}),
+      },
+    ]
+
+    const response = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 'trendsurfer-gpa',
+        method: 'getProgramAccountsV2',
+        params,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Helius getProgramAccountsV2 HTTP ${response.status}`)
+    }
+
+    const json = await response.json()
+
+    if (json.error) {
+      throw new Error(`Helius getProgramAccountsV2 RPC error: ${json.error.message || JSON.stringify(json.error)}`)
+    }
+
+    const result = json.result
+    const accounts = result?.accounts ?? result ?? []
+
+    if (!Array.isArray(accounts) || accounts.length === 0) break
+
+    for (const acct of accounts) {
+      const pk = acct.pubkey ?? acct.pubKey
+      if (pk) pubkeys.push(pk)
+    }
+
+    paginationKey = result?.paginationKey ?? null
+  } while (paginationKey)
+
+  return pubkeys
+}
+
 // Find pools by filtering program accounts with memcmp on baseMint
 export async function findPoolsByMint(tokenMint: string): Promise<string[]> {
-  const conn = getConnection()
-  const accounts = await conn.getProgramAccounts(METEORA_DBC_PROGRAM_ID, {
-    filters: [
-      { dataSize: VIRTUAL_POOL_SIZE },
-      {
-        memcmp: {
-          offset: VP.baseMint,
-          bytes: tokenMint,
-        },
-      },
-    ],
-    dataSlice: { offset: 0, length: 0 }, // Just addresses
-  })
-  return accounts.map((a) => a.pubkey.toBase58())
+  return getProgramAccountsV2([
+    { dataSize: VIRTUAL_POOL_SIZE },
+    { memcmp: { offset: VP.baseMint, bytes: tokenMint } },
+  ])
 }
 
 // Find pools by creator
 export async function findPoolsByCreator(creator: string): Promise<string[]> {
-  const conn = getConnection()
-  const accounts = await conn.getProgramAccounts(METEORA_DBC_PROGRAM_ID, {
-    filters: [
-      { dataSize: VIRTUAL_POOL_SIZE },
-      {
-        memcmp: {
-          offset: VP.creator,
-          bytes: creator,
-        },
-      },
-    ],
-    dataSlice: { offset: 0, length: 0 },
-  })
-  return accounts.map((a) => a.pubkey.toBase58())
+  return getProgramAccountsV2([
+    { dataSize: VIRTUAL_POOL_SIZE },
+    { memcmp: { offset: VP.creator, bytes: creator } },
+  ])
 }
 
 // Discover active pools from recent program transactions
