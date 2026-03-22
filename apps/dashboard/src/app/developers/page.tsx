@@ -847,6 +847,14 @@ const skill = new TrendSurferSkill({
               . No API keys, no accounts. Just HTTP and USDC.
             </p>
 
+            <div className="mt-4 bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
+              <p className="text-[13px] text-blue-800">
+                <span className="font-medium">Try it:</span>{' '}
+                Visit the endpoint in your browser — you&apos;ll get a 402 response with payment requirements.
+                That&apos;s the x402 protocol in action. Agents parse this response, pay the USDC amount, and retry to get the data.
+              </p>
+            </div>
+
             <div className="mt-6 space-y-4">
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
