@@ -592,8 +592,9 @@ export default function DevelopersPage() {
           <motion.section id="getting-started" className="scroll-mt-20" {...SECTION_FADE}>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Getting Started</h1>
             <p className="text-[15px] text-gray-500 mt-2 leading-relaxed">
-              Add trends.fun intelligence to any AI agent in 2 minutes. Scan token launches,
-              predict bonding curve graduations, check security, and execute trades on Meteora DBC.
+              trends.fun tokens sit on Meteora bonding curves. When enough buy pressure fills the curve,
+              the token &ldquo;graduates&rdquo; to a DEX pool and the price jumps. TrendSurfer predicts
+              which tokens will graduate. Add this intelligence to any AI agent in 2 minutes.
             </p>
 
             <div className="mt-6">
@@ -621,34 +622,29 @@ const { graduation, security, token } = await skill.analyzeByMint(
   'EK7NyRkRmstUZ49g9Z5a6Y3vFDywJu1cCph3SsRcvb8N'
 )
 
-console.log(token.name)              // "CHILD HEALTH"
-console.log(graduation.score)        // 58
-console.log(graduation.curveProgress) // 100.0
-console.log(graduation.velocity)     // "stagnant"
-console.log(security.safe)           // true
-console.log(graduation.reasoning)    // "Bonding curve is 100.0% filled..."`}
+console.log(token.name)              // → "CHILD HEALTH"
+console.log(graduation.score)        // → 100 (0-100 scale)
+console.log(graduation.curveProgress) // → 100.0 (% filled)
+console.log(graduation.velocity)     // → "accelerating" | "steady" | "stagnant"
+console.log(security.safe)           // → true (no honeypot/risks)
+console.log(graduation.reasoning)    // → "Bonding curve is 100% filled..."`}
               />
             </div>
 
             <div className="mt-6">
-              <p className="text-[13px] font-medium text-gray-700 mb-2">Or scan + analyze + trade in a loop</p>
+              <p className="text-[13px] font-medium text-gray-700 mb-2">Or scan all launches and find the best ones</p>
               <CodeBlock
-                filename="trading-agent.ts"
-                code={`// Scan for new launches, analyze each, trade the best ones
+                filename="scanner.ts"
+                code={`// Scan for new launches, analyze each, find graduating tokens
 const { launches } = await skill.scanLaunches()
 
 for (const token of launches) {
   const analysis = await skill.analyzeGraduation(token)
   const security = await skill.checkSecurity(token.mint)
 
-  if (analysis.score > 75 && security.safe) {
-    await skill.executeTrade({
-      tokenMint: token.mint,
-      side: 'buy',
-      amountSol: '0.1',
-      walletAddress: myWallet,
-      signTransaction: mySigner,
-    })
+  if (analysis.score > 65 && security.safe) {
+    console.log('🟢', token.symbol, 'score:', analysis.score)
+    console.log('  ', analysis.reasoning)
   }
 }`}
               />
@@ -856,8 +852,8 @@ const skill = new TrendSurferSkill({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <p className="text-[11px] uppercase tracking-wider text-gray-400 font-medium">Endpoint</p>
-                    <p style={{ fontFamily: MONO_STACK }} className="text-[13px] text-gray-800 mt-1">
-                      GET /api/intelligence
+                    <p style={{ fontFamily: MONO_STACK }} className="text-[12px] text-gray-800 mt-1 break-all">
+                      https://solana-trends-agent.vercel.app/api/intelligence
                     </p>
                   </div>
                   <div>
@@ -891,8 +887,8 @@ const skill = new TrendSurferSkill({
                     <span className="text-[12px] font-medium text-gray-400 mt-0.5 flex-shrink-0 w-4">1.</span>
                     <div>
                       <p className="text-[13px] text-gray-700">Send a request without payment headers</p>
-                      <code style={{ fontFamily: MONO_STACK }} className="text-[12px] text-gray-500 mt-1 block">
-                        GET /api/intelligence?mint=So11...
+                      <code style={{ fontFamily: MONO_STACK }} className="text-[11px] text-gray-500 mt-1 block break-all">
+                        curl https://solana-trends-agent.vercel.app/api/intelligence?mint=YOUR_MINT
                       </code>
                     </div>
                   </div>
