@@ -1191,169 +1191,104 @@ export default function Dashboard() {
       </section>
 
       {/* ================================================================== */}
-      {/* SECTION 5: LIVE PnL                                                   */}
+      {/* SECTION 5: PROOF OF EXECUTION                                        */}
       {/* ================================================================== */}
       <section className="bg-white border-b border-gray-100 py-16 sm:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionInView>
-            {/* Hero PnL metric */}
             <div className="text-center mb-10">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 mb-4">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wider">
-                  Trading Agent: Active
-                </span>
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900">Live PnL</h2>
-              <p className="text-sm text-gray-500 mt-1">Direct on-chain trades via Meteora DBC</p>
+              <h2 className="text-xl font-semibold text-gray-900">Proof of Execution</h2>
+              <p className="text-sm text-gray-500 mt-2 max-w-lg mx-auto">
+                Our intelligence led to a real on-chain trade. Verifiable on Solscan.
+              </p>
+            </div>
 
-              {/* Large PnL number */}
+            {/* Proof trade card */}
+            <div className="max-w-2xl mx-auto">
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5 }}
-                className="mt-6"
+                className="border border-gray-200 rounded-xl overflow-hidden"
               >
-                <p
-                  className={`text-5xl sm:text-6xl font-bold tracking-tight ${pnl.totalPnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}
-                  style={{ fontFamily: MONO }}
-                >
-                  {pnl.totalPnl >= 0 ? '+' : ''}{pnl.totalPnl.toFixed(4)}
-                  <span className="text-2xl font-normal text-gray-300 ml-2">SOL</span>
-                </p>
-                <p className="text-xs text-gray-400 mt-2">
-                  {pnl.totalTrades} trades executed · {pnl.winRate.toFixed(0)}% win rate · {openPositions.length} open positions
-                </p>
-              </motion.div>
-            </div>
-
-            {/* Stat cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <StatCard
-                label="Total PnL"
-                value={`${pnl.totalPnl >= 0 ? '+' : ''}${pnl.totalPnl.toFixed(4)} SOL`}
-                color={pnl.totalPnl >= 0 ? 'text-emerald-600' : 'text-red-500'}
-              />
-              <StatCard
-                label="Win Rate"
-                value={`${pnl.winRate.toFixed(0)}%`}
-                sub={`${wins.length}W / ${closedPositions.length - wins.length}L`}
-              />
-              <StatCard
-                label="Best Trade"
-                value={closedPositions.length > 0 ? `+${bestTrade.toFixed(1)}%` : '--'}
-                color="text-emerald-600"
-                sub={bestTradeSymbol ? `$${bestTradeSymbol}` : undefined}
-              />
-              <StatCard
-                label="Total Trades"
-                value={`${pnl.totalTrades}`}
-                sub={`${openPositions.length} open`}
-              />
-            </div>
-
-            {/* PnL Chart */}
-            {closedPositions.length > 1 && <PnLChart positions={closedPositions} />}
-
-            {/* Open Positions */}
-            {openPositions.length > 0 && (
-              <div className="mt-8">
-                <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Open Positions</h3>
-                <div className="space-y-2">
-                  {openPositions.map((pos) => (
-                    <div key={pos.id} className="bg-gray-50 rounded-lg border border-gray-200 px-4 py-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-8 h-8 rounded-full border-2 border-blue-600 flex items-center justify-center"
-                            style={{ fontFamily: MONO }}
-                          >
-                            <span className="text-blue-600 font-bold text-xs">{pos.graduationScore}</span>
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-gray-900">${pos.symbol}</span>
-                              <span className="inline-flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
-                                <span className="text-[10px] text-gray-500">Holding</span>
-                              </span>
-                            </div>
-                            <p className="text-xs text-gray-500 mt-0.5" style={{ fontFamily: MONO }}>
-                              {pos.entryAmount} SOL @ score {pos.graduationScore}/100
-                              <span className="text-gray-300 ml-2">via Meteora DBC</span>
-                            </p>
-                          </div>
-                        </div>
+                {/* Trade header */}
+                <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-emerald-50 border-2 border-emerald-200 flex items-center justify-center">
+                        <span className="text-emerald-600 font-bold text-sm" style={{ fontFamily: MONO }}>80</span>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Completed Trades */}
-            {closedPositions.length > 0 && (
-              <div className="mt-8">
-                <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Completed Trades</h3>
-                <div className="space-y-2">
-                  {closedPositions.slice(0, 8).map((pos) => {
-                    const isWin = (pos.realizedPnlPercent ?? 0) > 0
-                    return (
-                      <div key={pos.id} className="bg-gray-50 rounded-lg border border-gray-200 px-4 py-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                                isWin ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-red-50 text-red-500 border border-red-200'
-                              }`}
-                              style={{ fontFamily: MONO }}
-                            >
-                              {pos.realizedPnlPercent != null
-                                ? `${pos.realizedPnlPercent >= 0 ? '+' : ''}${pos.realizedPnlPercent.toFixed(0)}%`
-                                : '--'}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-gray-900">${pos.symbol}</span>
-                                <span className={`text-[10px] font-medium ${isWin ? 'text-emerald-600' : 'text-red-500'}`}>
-                                  {isWin ? 'Graduated' : 'Stop-loss'}
-                                </span>
-                                <span className="text-[9px] text-gray-300">on-chain</span>
-                              </div>
-                              <p className="text-xs text-gray-500 mt-0.5" style={{ fontFamily: MONO }}>
-                                {pos.entryAmount} SOL @ {pos.entryPrice.toFixed(8)}
-                                {pos.exitPrice ? ` \u2192 ${pos.exitPrice.toFixed(8)}` : ''}
-                                {pos.realizedPnl != null ? ` = ${isWin ? '+' : ''}${pos.realizedPnl.toFixed(4)} SOL` : ''}
-                              </p>
-                            </div>
-                          </div>
-                          <span className="text-xs text-gray-400">
-                            {pos.exitTimestamp ? timeAgo(pos.exitTimestamp) : ''}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-900">$REI</span>
+                          <span className="px-2 py-0.5 text-[10px] font-semibold rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            VERIFIED ON-CHAIN
                           </span>
                         </div>
+                        <p className="text-xs text-gray-500 mt-0.5">Bought at 48.6% curve — score 80/100 &ldquo;will_graduate&rdquo;</p>
                       </div>
-                    )
-                  })}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
 
-            {/* Empty state */}
-            {positions.length === 0 && (
-              <div className="bg-gray-50 rounded-xl border border-gray-100 p-12 text-center">
-                <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-emerald-500">
-                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                {/* Trade details */}
+                <div className="px-6 py-5">
+                  <div className="grid grid-cols-3 gap-4 mb-4">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Amount</p>
+                      <p className="text-lg font-bold text-gray-900 mt-0.5" style={{ fontFamily: MONO }}>0.01 SOL</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Route</p>
+                      <p className="text-lg font-bold text-gray-900 mt-0.5">Meteora DBC</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Status</p>
+                      <p className="text-lg font-bold text-emerald-600 mt-0.5">Confirmed</p>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                    <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium mb-1">Transaction</p>
+                    <p className="text-xs text-gray-600 break-all" style={{ fontFamily: MONO }}>
+                      4AYbTLwNxPvGc79EajpNdwMryQGTNvJWQAjY1GEtysA3qkrkSF31NVzNshYs88vaXau3Cy6zr6hZCfscZkDUrqar
+                    </p>
+                  </div>
+                  <a
+                    href="https://solscan.io/tx/4AYbTLwNxPvGc79EajpNdwMryQGTNvJWQAjY1GEtysA3qkrkSF31NVzNshYs88vaXau3Cy6zr6hZCfscZkDUrqar"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Verify on Solscan
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <path d="M3.5 8.5l5-5M4 3.5h4.5V8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </a>
                 </div>
-                <p className="text-sm font-medium text-gray-900">Awaiting first trade via Meteora DBC</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  The agent executes trades automatically when tokens score above threshold.
-                  Trades execute directly on Meteora Dynamic Bonding Curve.
-                </p>
-              </div>
-            )}
+
+                {/* How it happened */}
+                <div className="px-6 py-4 border-t border-gray-100 bg-[#fafafa]">
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium mb-2">Pipeline</p>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <span className="px-2 py-1 bg-white rounded border border-gray-200 font-medium text-gray-700">Agent scores 80</span>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 6h4M6.5 4l2 2-2 2" stroke="#9ca3af" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    <span className="px-2 py-1 bg-white rounded border border-gray-200 font-medium text-gray-700">Security pass</span>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 6h4M6.5 4l2 2-2 2" stroke="#9ca3af" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    <span className="px-2 py-1 bg-white rounded border border-gray-200 font-medium text-gray-700">DBC swap</span>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 6h4M6.5 4l2 2-2 2" stroke="#9ca3af" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    <span className="px-2 py-1 bg-emerald-50 rounded border border-emerald-200 font-medium text-emerald-700">On-chain</span>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Context note */}
+              <p className="text-center text-xs text-gray-400 mt-6 max-w-md mx-auto">
+                TrendSurfer is an intelligence provider, not a trading bot.
+                This trade proves the prediction pipeline works end-to-end.
+                Other agents use our SDK, MCP, or x402 API to get this intelligence.
+              </p>
+            </div>
           </SectionInView>
         </div>
       </section>
