@@ -276,6 +276,10 @@ export async function logAgent(level: string, message: string, data?: any): Prom
     sql: 'INSERT INTO agent_log (timestamp, level, message, data) VALUES (?, ?, ?, ?)',
     args: [Date.now(), level, message, data ? JSON.stringify(data) : null],
   })
+  // Keep only last 500 log entries to avoid blowing up row read counts
+  await d.execute(
+    'DELETE FROM agent_log WHERE id NOT IN (SELECT id FROM agent_log ORDER BY timestamp DESC LIMIT 500)'
+  )
 }
 
 export async function getAgentLogs(limit: number = 100): Promise<any[]> {

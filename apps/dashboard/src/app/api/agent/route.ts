@@ -4,6 +4,8 @@ import { createClient } from '@libsql/client'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 10
 
+const VM_API = process.env.VM_API_URL?.trim()
+
 function getDb() {
   const url = process.env.TURSO_DATABASE_URL?.trim()
   const token = process.env.TURSO_AUTH_TOKEN?.trim()
@@ -34,6 +36,13 @@ const EMPTY_STATUS = {
 }
 
 export async function GET() {
+  if (VM_API) {
+    try {
+      const r = await fetch(`${VM_API}/api/agent`, { next: { revalidate: 0 } })
+      const data = await r.json()
+      return NextResponse.json(data)
+    } catch { return NextResponse.json(EMPTY_STATUS) }
+  }
   try {
     const db = getDb()
 

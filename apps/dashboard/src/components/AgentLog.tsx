@@ -30,7 +30,7 @@ export function AgentLog() {
     }
 
     fetchLogs()
-    const interval = setInterval(fetchLogs, 5000)
+    const interval = setInterval(fetchLogs, 15000)
     return () => clearInterval(interval)
   }, [])
 
