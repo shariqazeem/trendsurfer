@@ -25,6 +25,11 @@ const knownPools = new Map<string, TokenLaunch>()
 let lastSignature: string | undefined
 let poolConfigFilter: string | undefined
 
+// Per-token refresh cooldown — don't re-read the same pool within 10 minutes
+const lastRefreshedAt = new Map<string, number>()
+const REFRESH_COOLDOWN_MS = 10 * 60 * 1000 // 10 minutes
+const MAX_REFRESHES_PER_CYCLE = 15 // cap RPC calls per cycle
+
 // Exponential backoff state for RPC 429s
 let backoffMs = 0
 let lastRateLimit = 0
@@ -143,18 +148,24 @@ export async function refreshLaunches(): Promise<TokenLaunch[]> {
 
   const launches = getKnownLaunches()
   let refreshed = 0
+  const now = Date.now()
 
   for (const launch of launches) {
+    if (refreshed >= MAX_REFRESHES_PER_CYCLE) break
     // Skip graduated tokens — no need to check anymore
     if (launch.graduated) continue
-    // Skip low-progress tokens — they rarely change fast enough to matter
-    if (launch.curveProgress < 40) continue
+    // Only refresh tokens >60% curve — saves ~60% of refresh RPC calls
+    if (launch.curveProgress < 60) continue
+    // Skip if refreshed recently
+    const lastRefresh = lastRefreshedAt.get(launch.poolAddress) || 0
+    if (now - lastRefresh < REFRESH_COOLDOWN_MS) continue
 
     try {
       const poolState = await getPoolState(launch.poolAddress)
       if (poolState) {
         launch.curveProgress = poolState.curveProgress
         launch.graduated = poolState.graduated
+        lastRefreshedAt.set(launch.poolAddress, now)
         refreshed++
       }
       resetBackoff()
@@ -168,7 +179,7 @@ export async function refreshLaunches(): Promise<TokenLaunch[]> {
   }
 
   if (refreshed > 0) {
-    console.log(`Refreshed ${refreshed} active tokens (>40% curve)`)
+    console.log(`Refreshed ${refreshed} active tokens (>60% curve)`)
   }
 
   return launches
