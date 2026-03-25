@@ -165,10 +165,9 @@ async function runScanCycle(): Promise<void> {
       }
     }
 
-    // 3. Analyze tokens with meaningful progress
-    // Only analyze tokens above 10% curve to save API credits
+    // 3. Analyze all non-graduated tokens (AI only kicks in >60% curve anyway)
     const candidates = allLaunches.filter(
-      (l) => !l.graduated && l.curveProgress >= 10
+      (l) => !l.graduated && l.curveProgress >= 1
     )
 
     if (candidates.length > 0) {
