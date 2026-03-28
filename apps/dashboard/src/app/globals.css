@@ -45,14 +45,7 @@ html {
   -webkit-backdrop-filter: blur(8px);
 }
 
-/* ── Gradient text ── */
-.gradient-text {
-  background: linear-gradient(135deg, #0c8de9 0%, #6366f1 50%, #8b5cf6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
+/* ── Gradient text (kept for optional use) ── */
 .gradient-text-emerald {
   background: linear-gradient(135deg, #059669 0%, #10b981 100%);
   -webkit-background-clip: text;
@@ -135,50 +128,21 @@ html {
     radial-gradient(ellipse at 50% 90%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
 }
 
-/* ── Hero premium background ── */
-.hero-bg {
-  background:
-    radial-gradient(ellipse at 20% 50%, rgba(12, 141, 233, 0.1) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 30%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 100%, rgba(16, 185, 129, 0.06) 0%, transparent 40%),
-    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+/* ── Smooth reveal on scroll ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.7s cubic-bezier(0.25, 0.1, 0.25, 1),
+              transform 0.7s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
-/* ── Stat card gradient accent ── */
-.stat-accent {
-  position: relative;
-  overflow: hidden;
-}
-.stat-accent::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #0c8de9, #6366f1, #8b5cf6);
-  border-radius: 3px 3px 0 0;
-}
-
-/* ── Dark section ── */
-.section-dark {
-  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
-  color: #f8fafc;
-}
-
-/* ── Gradient border card ── */
-.gradient-card {
-  position: relative;
-  background: white;
-  border-radius: 1rem;
-}
-.gradient-card::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  background: linear-gradient(135deg, #e0effe, #ede9fe, #d1fae5);
-  z-index: -1;
+/* ── Number counter smooth transition ── */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Score ring glow ── */

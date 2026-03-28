@@ -132,18 +132,18 @@ type SandboxPhase = 'idle' | 'validating' | 'fetching' | 'analyzing' | 'done' | 
 const MONO = "'JetBrains Mono', 'SF Mono', 'Fira Code', monospace"
 
 const sectionVariants = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.25, 0.1, 0.25, 1] } },
 }
 
 const staggerContainer = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.08 } },
+  visible: { transition: { staggerChildren: 0.06 } },
 }
 
 const staggerItem = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] } },
 }
 
 const SANDBOX_PHASE_LABELS: Record<SandboxPhase, string> = {
@@ -417,7 +417,7 @@ export default function Dashboard() {
       {/* ================================================================== */}
       {/* SECTION 1: HERO = SANDBOX                                          */}
       {/* ================================================================== */}
-      <section className="relative overflow-hidden hero-bg">
+      <section className="relative bg-white overflow-hidden">
         <div className="absolute inset-0 dot-grid-subtle opacity-30" />
         <div className="section-divider absolute bottom-0 left-0 right-0" />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-16 sm:pt-14 sm:pb-24">
@@ -529,70 +529,67 @@ export default function Dashboard() {
 
           {/* Title + tagline */}
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
             className="text-center mb-8"
           >
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-gray-900">
               The Intelligence Skill for{' '}
-              <span className="gradient-text">trends.fun</span>
+              <span className="text-gray-900 underline decoration-gray-200 decoration-2 underline-offset-4">trends.fun</span>
             </h1>
             <p className="text-base sm:text-lg text-gray-500 mt-3 max-w-2xl mx-auto">
               AI-powered graduation prediction for Meteora DBC tokens. SDK, MCP, and x402 API.
             </p>
             {/* Sponsor / Partner logos */}
-            <div className="flex items-center justify-center gap-5 mt-5 flex-wrap">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8, duration: 0.6 }}
+              className="flex items-center justify-center gap-5 mt-6 flex-wrap"
+            >
               <span className="text-[10px] uppercase tracking-wider text-gray-300 font-medium">Built with</span>
-              <a href="https://trends.fun" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors">trends.fun</a>
-              <span className="w-px h-3 bg-gray-200" />
-              <a href="https://solana.com" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors">Solana</a>
-              <span className="w-px h-3 bg-gray-200" />
-              <a href="https://commonstack.ai" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2"/><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3"/></svg>
-                CommonStack AI
-              </a>
-              <span className="w-px h-3 bg-gray-200" />
-              <span className="text-xs font-semibold text-gray-400">Meteora DBC</span>
-              <span className="w-px h-3 bg-gray-200" />
-              <span className="text-xs font-semibold text-gray-400">Helius</span>
-            </div>
+              {['trends.fun', 'Solana', 'CommonStack AI', 'Meteora', 'Helius'].map((name, i) => (
+                <span key={name} className="flex items-center gap-5">
+                  {i > 0 && <span className="w-px h-3 bg-gray-200" />}
+                  <span className="text-[11px] font-semibold text-gray-400 tracking-wide">{name}</span>
+                </span>
+              ))}
+            </motion.div>
           </motion.div>
 
-          {/* Live Stats — big, bold, impressive */}
+          {/* Live Stats — clean, bold, animated */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.5 }}
-            className="grid grid-cols-3 gap-3 sm:gap-4 max-w-xl mx-auto mb-8"
+            transition={{ delay: 0.35, duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
+            className="flex items-center justify-center gap-8 sm:gap-12 mb-8"
           >
-            <div className="text-center p-3 sm:p-4 rounded-2xl bg-white/70 border border-gray-200/60 shadow-premium stat-accent">
-              <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 tabular-nums" style={{ fontFamily: MONO }}>
-                {(status?.tokensScanned || 0) > 1000
-                  ? `${Math.floor((status?.tokensScanned || 0) / 1000)}K+`
-                  : (status?.tokensScanned || 0).toLocaleString()}
-              </p>
-              <p className="text-[10px] sm:text-[11px] text-gray-400 font-medium uppercase tracking-wider mt-1">Scanned</p>
-            </div>
-            <div className="text-center p-3 sm:p-4 rounded-2xl bg-white/70 border border-gray-200/60 shadow-premium stat-accent">
-              <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 tabular-nums" style={{ fontFamily: MONO }}>
-                {predictions.length.toLocaleString()}
-              </p>
-              <p className="text-[10px] sm:text-[11px] text-gray-400 font-medium uppercase tracking-wider mt-1">Predictions</p>
-            </div>
-            <div className="text-center p-3 sm:p-4 rounded-2xl bg-white/70 border border-gray-200/60 shadow-premium stat-accent">
-              <p className="text-2xl sm:text-3xl font-extrabold gradient-text-emerald tabular-nums" style={{ fontFamily: MONO }}>
-                {graduationStats.total}
-              </p>
-              <p className="text-[10px] sm:text-[11px] text-gray-400 font-medium uppercase tracking-wider mt-1">Graduations</p>
-            </div>
+            {[
+              { value: status?.tokensScanned || 0, label: 'Tokens Scanned', fmt: (v: number) => v > 1000 ? `${Math.floor(v / 1000)}K+` : v.toLocaleString() },
+              { value: predictions.length, label: 'Predictions', fmt: (v: number) => v.toLocaleString() },
+              { value: graduationStats.total, label: 'Graduations', fmt: (v: number) => String(v) },
+            ].map((stat, i) => (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 + i * 0.1, duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+                className="text-center"
+              >
+                <p className="text-3xl sm:text-4xl font-extrabold text-gray-900 tabular-nums" style={{ fontFamily: MONO }}>
+                  {stat.fmt(stat.value)}
+                </p>
+                <p className="text-[10px] sm:text-[11px] text-gray-400 font-medium uppercase tracking-wider mt-1">{stat.label}</p>
+              </motion.div>
+            ))}
           </motion.div>
 
           {/* ── Sandbox Input Area ── */}
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.15 }}
+            transition={{ duration: 0.6, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
             className="max-w-2xl mx-auto mb-6"
           >
             <div className="flex gap-2">
@@ -1333,8 +1330,9 @@ export default function Dashboard() {
       {/* ================================================================== */}
       {/* SECTION 6: FOR DEVELOPERS                                           */}
       {/* ================================================================== */}
-      <section className="section-dark py-16 sm:py-24">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+      <section className="relative bg-gray-950 py-16 sm:py-24">
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
           <SectionInView>
             <div className="text-center mb-8">
               <h2 className="text-xl font-bold text-white">Use TrendSurfer in Your Agent</h2>
@@ -1368,10 +1366,10 @@ export default function Dashboard() {
                 </div>
                 <button
                   onClick={handleCopy}
-                  className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-xs font-semibold rounded-xl hover:from-brand-600 hover:to-brand-700 transition-all shadow-lg shadow-brand-500/25"
+                  className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-900 text-white text-xs font-semibold rounded-xl hover:bg-gray-800 transition-all duration-200"
                 >
                   <span style={{ fontFamily: MONO }}>npm install trendsurfer-skill</span>
-                  <span className="text-brand-200">{copied ? 'Copied!' : ''}</span>
+                  <span className="text-gray-500">{copied ? 'Copied!' : ''}</span>
                 </button>
               </div>
 
