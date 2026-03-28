@@ -65,6 +65,17 @@ interface PnLData {
   winRate: number
 }
 
+interface CreatorProfile {
+  address: string
+  walletAgeDays: number
+  totalTokens: number
+  totalValueUsd: number
+  transactionCount: number
+  riskScore: number
+  riskLevel: 'low' | 'medium' | 'high'
+  flags: string[]
+}
+
 interface Analysis {
   mint: string
   name: string
@@ -81,6 +92,7 @@ interface Analysis {
   reasoning: string
   prediction: string
   graduated: boolean
+  creatorProfile?: CreatorProfile | null
   tweetUrl?: string
   tweetAuthor?: string
   tweetContent?: string
@@ -895,6 +907,67 @@ export default function Dashboard() {
                             </>
                           )}
                         </div>
+                      </div>
+                    )}
+
+                    {/* Creator Wallet Profile (GoldRush) */}
+                    {sandboxAnalysis.creatorProfile && (
+                      <div className="px-5 py-4 border-t border-gray-200">
+                        <div className="flex items-center gap-2 mb-3">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-gray-400">
+                            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" />
+                          </svg>
+                          <span className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Creator Wallet</span>
+                          <span className="text-[9px] text-gray-300" style={{ fontFamily: MONO }}>via GoldRush</span>
+                          <span className={`ml-auto px-2 py-0.5 text-[10px] font-semibold rounded ${
+                            sandboxAnalysis.creatorProfile.riskLevel === 'low' ? 'bg-emerald-50 text-emerald-700'
+                              : sandboxAnalysis.creatorProfile.riskLevel === 'medium' ? 'bg-amber-50 text-amber-700'
+                                : 'bg-red-50 text-red-700'
+                          }`}>
+                            {sandboxAnalysis.creatorProfile.riskLevel === 'low' ? 'LOW RISK'
+                              : sandboxAnalysis.creatorProfile.riskLevel === 'medium' ? 'MEDIUM RISK'
+                                : 'HIGH RISK'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-3">
+                          <div>
+                            <p className="text-[10px] text-gray-400">Wallet Age</p>
+                            <p className="text-sm font-semibold text-gray-900" style={{ fontFamily: MONO }}>
+                              {sandboxAnalysis.creatorProfile.walletAgeDays > 0 ? `${sandboxAnalysis.creatorProfile.walletAgeDays}d` : '--'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-400">Tokens Held</p>
+                            <p className="text-sm font-semibold text-gray-900" style={{ fontFamily: MONO }}>
+                              {sandboxAnalysis.creatorProfile.totalTokens}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-400">Portfolio</p>
+                            <p className="text-sm font-semibold text-gray-900" style={{ fontFamily: MONO }}>
+                              ${sandboxAnalysis.creatorProfile.totalValueUsd.toFixed(0)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-400">Transactions</p>
+                            <p className="text-sm font-semibold text-gray-900" style={{ fontFamily: MONO }}>
+                              {sandboxAnalysis.creatorProfile.transactionCount}
+                            </p>
+                          </div>
+                        </div>
+                        {sandboxAnalysis.creatorProfile.flags.length > 0 && (
+                          <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+                            {sandboxAnalysis.creatorProfile.flags.map((flag) => (
+                              <span key={flag} className="px-2 py-0.5 text-[10px] font-medium rounded bg-amber-50 text-amber-700 border border-amber-100">
+                                {flag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-[10px] text-gray-300 mt-2" style={{ fontFamily: MONO }}>
+                          {sandboxAnalysis.creatorProfile.address.substring(0, 20)}...
+                        </p>
                       </div>
                     )}
 

@@ -16,6 +16,7 @@ const BITGET_BASE = 'https://copenapi.bgwapi.io'
 const COMMONSTACK_API_KEY = process.env.COMMONSTACK_API_KEY || ''
 const COMMONSTACK_BASE_URL = 'https://api.commonstack.ai/v1'
 const AI_MODEL = process.env.COMMONSTACK_MODEL || 'openai/gpt-oss-120b'
+const GOLDRUSH_API_KEY = process.env.GOLDRUSH_API_KEY || ''
 
 // ── Helpers ──
 
@@ -59,6 +60,93 @@ async function bitgetPost(path: string, body: Record<string, unknown>) {
 
 // ── Core Analysis ──
 
+interface CreatorProfile {
+  address: string
+  walletAgeDays: number
+  totalTokens: number
+  totalValueUsd: number
+  transactionCount: number
+  riskScore: number        // 0-100 (0 = high risk, 100 = safe)
+  riskLevel: 'low' | 'medium' | 'high'
+  flags: string[]
+}
+
+async function scoreDevWallet(creatorAddress: string): Promise<CreatorProfile | null> {
+  if (!GOLDRUSH_API_KEY || !creatorAddress) return null
+
+  const profile: CreatorProfile = {
+    address: creatorAddress,
+    walletAgeDays: 0,
+    totalTokens: 0,
+    totalValueUsd: 0,
+    transactionCount: 0,
+    riskScore: 50,
+    riskLevel: 'medium',
+    flags: [],
+  }
+
+  try {
+    // 1. Get token balances — shows portfolio diversity
+    const balRes = await fetch(
+      `https://api.covalenthq.com/v1/solana-mainnet/address/${creatorAddress}/balances_v2/?key=${GOLDRUSH_API_KEY}&no-spam=true`,
+      { signal: AbortSignal.timeout(8000) }
+    )
+    if (balRes.ok) {
+      const balData = await balRes.json()
+      const items = balData?.data?.items || []
+      profile.totalTokens = items.length
+      profile.totalValueUsd = items.reduce((sum: number, i: any) => sum + (i.quote || 0), 0)
+    }
+  } catch { /* balance fetch failed */ }
+
+  try {
+    // 2. Get recent transactions — shows activity level + wallet age estimate
+    const txRes = await fetch(
+      `https://api.covalenthq.com/v1/solana-mainnet/address/${creatorAddress}/transactions_v3/?key=${GOLDRUSH_API_KEY}&page=0&page-size=20`,
+      { signal: AbortSignal.timeout(8000) }
+    )
+    if (txRes.ok) {
+      const txData = await txRes.json()
+      const txItems = txData?.data?.items || []
+      profile.transactionCount = txData?.data?.pagination?.total_count || txItems.length
+
+      // Estimate wallet age from oldest tx in sample
+      if (txItems.length > 0) {
+        const oldest = txItems[txItems.length - 1]
+        const oldestDate = new Date(oldest.block_signed_at || oldest.block_timestamp || Date.now())
+        profile.walletAgeDays = Math.max(0, Math.floor((Date.now() - oldestDate.getTime()) / (1000 * 60 * 60 * 24)))
+      }
+    }
+  } catch { /* tx fetch failed */ }
+
+  // 3. Score the wallet
+  let score = 50
+
+  // Wallet age: older = more trustworthy
+  if (profile.walletAgeDays >= 180) score += 20
+  else if (profile.walletAgeDays >= 30) score += 10
+  else if (profile.walletAgeDays < 7) { score -= 15; profile.flags.push('New wallet (<7 days)') }
+
+  // Portfolio diversity: more tokens = likely real user
+  if (profile.totalTokens >= 10) score += 10
+  else if (profile.totalTokens >= 3) score += 5
+  else if (profile.totalTokens <= 1) { score -= 10; profile.flags.push('Minimal portfolio') }
+
+  // Portfolio value: skin in the game
+  if (profile.totalValueUsd >= 1000) score += 10
+  else if (profile.totalValueUsd >= 100) score += 5
+
+  // Activity level
+  if (profile.transactionCount >= 50) score += 10
+  else if (profile.transactionCount >= 10) score += 5
+  else if (profile.transactionCount < 5) { score -= 10; profile.flags.push('Low activity') }
+
+  profile.riskScore = Math.max(0, Math.min(100, score))
+  profile.riskLevel = profile.riskScore >= 65 ? 'low' : profile.riskScore >= 40 ? 'medium' : 'high'
+
+  return profile
+}
+
 interface AnalysisResult {
   mint: string
   name: string
@@ -75,6 +163,7 @@ interface AnalysisResult {
   reasoning: string
   prediction: string
   graduated: boolean
+  creatorProfile?: CreatorProfile | null
   tweetUrl?: string
   tweetAuthor?: string
   tweetContent?: string
@@ -217,6 +306,7 @@ async function analyzeMint(mint: string): Promise<AnalysisResult> {
   }
 
   const configAddress = readPubkey(poolData, 72)
+  const creatorAddress = readPubkey(poolData, 104)
   const baseMint = readPubkey(poolData, 136)
   const quoteReserve = readU64(poolData, 240)
   const isMigrated = poolData[305] === 1
@@ -242,20 +332,29 @@ async function analyzeMint(mint: string): Promise<AnalysisResult> {
     curveProgress = isMigrated ? 100 : 0
   }
 
-  // 5. Holder analysis
+  // 5. Holder analysis + Creator wallet scoring (parallel)
   let holderCount = 0
   let topHolderConcentration = 0
-  try {
-    const largest = await heliusConn.getTokenLargestAccounts(mintPk)
-    holderCount = largest.value.length
-    if (holderCount > 0) {
-      const total = largest.value.reduce((s: number, a) => s + Number(a.amount), 0)
-      if (total > 0) {
-        topHolderConcentration = Math.round((Number(largest.value[0].amount) / total) * 100)
+  let creatorProfile: CreatorProfile | null = null
+
+  const [holderResult, creatorResult] = await Promise.allSettled([
+    // Holder analysis
+    (async () => {
+      const largest = await heliusConn.getTokenLargestAccounts(mintPk)
+      holderCount = largest.value.length
+      if (holderCount > 0) {
+        const total = largest.value.reduce((s: number, a) => s + Number(a.amount), 0)
+        if (total > 0) {
+          topHolderConcentration = Math.round((Number(largest.value[0].amount) / total) * 100)
+        }
       }
-    }
-  } catch {
-    // Holder analysis failed
+    })(),
+    // Creator wallet scoring via GoldRush
+    scoreDevWallet(creatorAddress),
+  ])
+
+  if (creatorResult.status === 'fulfilled' && creatorResult.value) {
+    creatorProfile = creatorResult.value
   }
 
   // 6. Security check via Bitget
@@ -415,6 +514,7 @@ Respond JSON only: {"score": 0-100, "reasoning": "2-3 sentences with specific an
     reasoning: parts.join(' '),
     prediction,
     graduated: isMigrated,
+    creatorProfile,
     tweetUrl,
     tweetAuthor,
     tweetContent,
