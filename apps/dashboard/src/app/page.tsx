@@ -417,20 +417,19 @@ export default function Dashboard() {
       {/* ================================================================== */}
       {/* SECTION 1: HERO = SANDBOX                                          */}
       {/* ================================================================== */}
-      <section className="relative bg-white overflow-hidden">
-        <div className="absolute inset-0 gradient-mesh" />
-        <div className="absolute inset-0 dot-grid-subtle opacity-40" />
+      <section className="relative overflow-hidden hero-bg">
+        <div className="absolute inset-0 dot-grid-subtle opacity-30" />
         <div className="section-divider absolute bottom-0 left-0 right-0" />
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-20 sm:pt-20 sm:pb-28">
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-16 sm:pt-14 sm:pb-24">
           {/* Top row: logo + status + links */}
           <div className="relative flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gray-900 flex items-center justify-center">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-gray-900 to-gray-700 flex items-center justify-center shadow-lg">
+                <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
                   <path d="M2 12L6 4l4 8 4-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
-              <span className="text-lg font-semibold tracking-tight">TrendSurfer</span>
+              <span className="text-lg font-bold tracking-tight">TrendSurfer</span>
             </div>
             <div className="flex items-center gap-4">
               <Link
@@ -560,18 +559,33 @@ export default function Dashboard() {
             </div>
           </motion.div>
 
-          {/* Live Stats Ticker */}
+          {/* Live Stats — big, bold, impressive */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.4 }}
-            className="flex items-center justify-center gap-6 mb-6"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+            className="grid grid-cols-3 gap-3 sm:gap-4 max-w-xl mx-auto mb-8"
           >
-            <LiveTickerStat label="tokens scanned" value={status?.tokensScanned || 0} />
-            <div className="w-px h-4 bg-gray-200" />
-            <LiveTickerStat label="predictions" value={predictions.length} />
-            <div className="w-px h-4 bg-gray-200" />
-            <LiveTickerStat label="graduations" value={graduationStats.total} />
+            <div className="text-center p-3 sm:p-4 rounded-2xl bg-white/70 border border-gray-200/60 shadow-premium stat-accent">
+              <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 tabular-nums" style={{ fontFamily: MONO }}>
+                {(status?.tokensScanned || 0) > 1000
+                  ? `${Math.floor((status?.tokensScanned || 0) / 1000)}K+`
+                  : (status?.tokensScanned || 0).toLocaleString()}
+              </p>
+              <p className="text-[10px] sm:text-[11px] text-gray-400 font-medium uppercase tracking-wider mt-1">Scanned</p>
+            </div>
+            <div className="text-center p-3 sm:p-4 rounded-2xl bg-white/70 border border-gray-200/60 shadow-premium stat-accent">
+              <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 tabular-nums" style={{ fontFamily: MONO }}>
+                {predictions.length.toLocaleString()}
+              </p>
+              <p className="text-[10px] sm:text-[11px] text-gray-400 font-medium uppercase tracking-wider mt-1">Predictions</p>
+            </div>
+            <div className="text-center p-3 sm:p-4 rounded-2xl bg-white/70 border border-gray-200/60 shadow-premium stat-accent">
+              <p className="text-2xl sm:text-3xl font-extrabold gradient-text-emerald tabular-nums" style={{ fontFamily: MONO }}>
+                {graduationStats.total}
+              </p>
+              <p className="text-[10px] sm:text-[11px] text-gray-400 font-medium uppercase tracking-wider mt-1">Graduations</p>
+            </div>
           </motion.div>
 
           {/* ── Sandbox Input Area ── */}
@@ -1319,12 +1333,12 @@ export default function Dashboard() {
       {/* ================================================================== */}
       {/* SECTION 6: FOR DEVELOPERS                                           */}
       {/* ================================================================== */}
-      <section className="bg-[#fafafa] border-b border-gray-100 py-16 sm:py-24">
+      <section className="section-dark py-16 sm:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionInView>
             <div className="text-center mb-8">
-              <h2 className="text-xl font-semibold text-gray-900">Use TrendSurfer in Your Agent</h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <h2 className="text-xl font-bold text-white">Use TrendSurfer in Your Agent</h2>
+              <p className="text-sm text-gray-400 mt-1">
                 Reusable SDK + MCP server for any AI agent framework
               </p>
             </div>
@@ -1339,25 +1353,25 @@ export default function Dashboard() {
                   <h3 className="text-sm font-semibold text-gray-900">TypeScript SDK</h3>
                 </div>
                 <div
-                  className="bg-gray-50 rounded-lg border border-gray-200 p-4 text-xs leading-relaxed overflow-x-auto"
+                  className="bg-[#0f172a] rounded-xl p-4 text-xs leading-relaxed overflow-x-auto"
                   style={{ fontFamily: MONO }}
                 >
                   <div className="text-gray-500">{'// Install the skill'}</div>
-                  <div><span className="text-blue-600">npm install</span> trendsurfer-skill</div>
+                  <div className="text-gray-300"><span className="text-sky-400">npm install</span> trendsurfer-skill</div>
                   <div className="mt-3 text-gray-500">{'// Use in your agent'}</div>
-                  <div><span className="text-violet-600">import</span> {'{ TrendSurferSkill }'} <span className="text-violet-600">from</span> <span className="text-emerald-600">{`'trendsurfer-skill'`}</span></div>
-                  <div className="mt-2"><span className="text-violet-600">const</span> ts = <span className="text-violet-600">new</span> <span className="text-blue-600">TrendSurferSkill</span>()</div>
-                  <div className="mt-2"><span className="text-violet-600">const</span> tokens = <span className="text-violet-600">await</span> ts.<span className="text-blue-600">scanLaunches</span>()</div>
-                  <div><span className="text-violet-600">const</span> score = <span className="text-violet-600">await</span> ts.<span className="text-blue-600">analyzeGraduation</span>(mint)</div>
-                  <div><span className="text-violet-600">const</span> safe = <span className="text-violet-600">await</span> ts.<span className="text-blue-600">checkSecurity</span>(mint)</div>
-                  <div><span className="text-violet-600">const</span> tx = <span className="text-violet-600">await</span> ts.<span className="text-blue-600">executeTrade</span>(params)</div>
+                  <div className="text-gray-300"><span className="text-purple-400">import</span> {'{ TrendSurferSkill }'} <span className="text-purple-400">from</span> <span className="text-emerald-400">{`'trendsurfer-skill'`}</span></div>
+                  <div className="mt-2 text-gray-300"><span className="text-purple-400">const</span> ts = <span className="text-purple-400">new</span> <span className="text-sky-400">TrendSurferSkill</span>()</div>
+                  <div className="mt-2 text-gray-300"><span className="text-purple-400">const</span> tokens = <span className="text-purple-400">await</span> ts.<span className="text-sky-400">scanLaunches</span>()</div>
+                  <div className="text-gray-300"><span className="text-purple-400">const</span> score = <span className="text-purple-400">await</span> ts.<span className="text-sky-400">analyzeGraduation</span>(mint)</div>
+                  <div className="text-gray-300"><span className="text-purple-400">const</span> safe = <span className="text-purple-400">await</span> ts.<span className="text-sky-400">checkSecurity</span>(mint)</div>
+                  <div className="text-gray-300"><span className="text-purple-400">const</span> tx = <span className="text-purple-400">await</span> ts.<span className="text-sky-400">executeTrade</span>(params)</div>
                 </div>
                 <button
                   onClick={handleCopy}
-                  className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-800 transition-colors"
+                  className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-brand-500 to-brand-600 text-white text-xs font-semibold rounded-xl hover:from-brand-600 hover:to-brand-700 transition-all shadow-lg shadow-brand-500/25"
                 >
                   <span style={{ fontFamily: MONO }}>npm install trendsurfer-skill</span>
-                  <span className="text-gray-400">{copied ? 'Copied!' : ''}</span>
+                  <span className="text-brand-200">{copied ? 'Copied!' : ''}</span>
                 </button>
               </div>
 
@@ -1370,18 +1384,19 @@ export default function Dashboard() {
                   <h3 className="text-sm font-semibold text-gray-900">MCP Server</h3>
                 </div>
                 <div
-                  className="bg-gray-50 rounded-lg border border-gray-200 p-4 text-xs leading-relaxed"
+                  className="bg-[#0f172a] rounded-xl p-4 text-xs leading-relaxed"
                   style={{ fontFamily: MONO }}
                 >
-                  <div className="text-gray-500">{'// 6 tools, any agent framework'}</div>
-                  <div><span className="text-blue-600">npx</span> trendsurfer-mcp</div>
+                  <div className="text-gray-500">{'// 7 tools, any agent framework'}</div>
+                  <div className="text-gray-300"><span className="text-sky-400">npx</span> trendsurfer-mcp</div>
                   <div className="mt-3 text-gray-500">{'// Available tools:'}</div>
-                  <div className="text-gray-700">scan_launches</div>
-                  <div className="text-gray-700">analyze_graduation</div>
-                  <div className="text-gray-700">check_security</div>
-                  <div className="text-gray-700">score_dev_wallet</div>
-                  <div className="text-gray-700">get_swap_quote</div>
-                  <div className="text-gray-700">execute_trade</div>
+                  <div className="text-emerald-400">analyze_by_mint</div>
+                  <div className="text-gray-300">scan_launches</div>
+                  <div className="text-gray-300">analyze_graduation</div>
+                  <div className="text-gray-300">check_security</div>
+                  <div className="text-gray-300">get_quote</div>
+                  <div className="text-gray-300">get_launches</div>
+                  <div className="text-gray-300">refresh_launches</div>
                 </div>
                 <div className="mt-4 flex items-center gap-3">
                   <Link
@@ -1460,7 +1475,7 @@ export default function Dashboard() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-100 py-12">
+      <footer className="bg-[#fafbfc] border-t border-gray-100 py-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           {/* Partner / Sponsor bar */}
           <div className="flex items-center justify-center gap-6 mb-8 flex-wrap">
