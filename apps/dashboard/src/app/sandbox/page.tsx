@@ -524,6 +524,9 @@ function SandboxContent() {
                     <span className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">
                       AI Analysis
                     </span>
+                    <a href="https://commonstack.ai" target="_blank" rel="noopener noreferrer" className="text-[9px] text-gray-300 hover:text-gray-500 transition-colors" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                      via CommonStack
+                    </a>
                     <span className={`ml-auto px-2 py-0.5 text-[10px] font-semibold rounded ${
                       analysis.prediction === 'will_graduate' ? 'bg-emerald-50 text-emerald-700'
                         : analysis.prediction === 'watching' ? 'bg-blue-50 text-blue-700'

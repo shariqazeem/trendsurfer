@@ -967,7 +967,7 @@ const data = await paid.json()
             <h2 className="text-xl font-bold text-gray-900 tracking-tight">Architecture</h2>
             <p className="text-[15px] text-gray-500 mt-2 leading-relaxed">
               TrendSurfer sits between your agent and the Solana blockchain, providing structured
-              intelligence about trends.fun token launches.
+              intelligence about trends.fun token launches. AI analysis powered by <a href="https://commonstack.ai" target="_blank" rel="noopener noreferrer" className="text-gray-700 font-medium hover:text-blue-600 transition-colors">CommonStack</a>.
             </p>
 
             <div className="mt-8">
@@ -978,7 +978,8 @@ const data = await paid.json()
                   {[
                     { label: 'Your Agent', sub: 'Claude, GPT, any LLM' },
                     { label: 'TrendSurfer', sub: 'SDK or MCP Server' },
-                    { label: 'Helius RPC', sub: 'Data + Execution' },
+                    { label: 'CommonStack AI', sub: 'Graduation Scoring' },
+                    { label: 'Helius RPC', sub: 'On-Chain Data' },
                     { label: 'Solana', sub: 'Meteora DBC' },
                   ].map((node, i, arr) => (
                     <div key={node.label} className="flex items-center gap-3">
@@ -1000,7 +1001,8 @@ const data = await paid.json()
                   {[
                     { label: 'Your Agent', sub: 'Claude, GPT, any LLM' },
                     { label: 'TrendSurfer', sub: 'SDK or MCP Server' },
-                    { label: 'Helius RPC', sub: 'Data + Execution' },
+                    { label: 'CommonStack AI', sub: 'Graduation Scoring' },
+                    { label: 'Helius RPC', sub: 'On-Chain Data' },
                     { label: 'Solana', sub: 'Meteora DBC' },
                   ].map((node, i, arr) => (
                     <div key={node.label} className="flex flex-col items-center gap-2 w-full">
