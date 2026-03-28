@@ -417,8 +417,11 @@ export default function Dashboard() {
       {/* ================================================================== */}
       {/* SECTION 1: HERO = SANDBOX                                          */}
       {/* ================================================================== */}
-      <section className="bg-white border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-20 sm:pt-20 sm:pb-28">
+      <section className="relative bg-white overflow-hidden">
+        <div className="absolute inset-0 gradient-mesh" />
+        <div className="absolute inset-0 dot-grid-subtle opacity-40" />
+        <div className="section-divider absolute bottom-0 left-0 right-0" />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-20 sm:pt-20 sm:pb-28">
           {/* Top row: logo + status + links */}
           <div className="relative flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
@@ -442,8 +445,8 @@ export default function Dashboard() {
               >
                 Developers
               </Link>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200">
-                <div className={`w-2 h-2 rounded-full ${status?.running ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'}`} />
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${status?.running ? 'bg-emerald-50/80 border-emerald-200 shadow-premium' : 'bg-gray-50 border-gray-200'}`}>
+                <div className={`w-2 h-2 rounded-full ${status?.running ? 'bg-emerald-500 live-dot' : 'bg-gray-300'}`} />
                 <span className="text-xs font-medium text-gray-600">
                   {status?.running ? 'Agent Live' : 'Agent Offline'}
                 </span>
@@ -532,9 +535,9 @@ export default function Dashboard() {
             transition={{ duration: 0.5 }}
             className="text-center mb-8"
           >
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-gray-900">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-gray-900">
               The Intelligence Skill for{' '}
-              <span className="text-blue-600">trends.fun</span>
+              <span className="gradient-text">trends.fun</span>
             </h1>
             <p className="text-base sm:text-lg text-gray-500 mt-3 max-w-2xl mx-auto">
               AI-powered graduation prediction for Meteora DBC tokens. SDK, MCP, and x402 API.
@@ -588,7 +591,7 @@ export default function Dashboard() {
                   onKeyDown={(e) => e.key === 'Enter' && !sandboxIsLoading && handleSandboxAnalyze()}
                   placeholder="Paste a Solana token mint address..."
                   disabled={sandboxIsLoading}
-                  className="w-full px-4 py-3.5 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 focus:bg-white transition-colors disabled:opacity-50 placeholder:text-gray-400"
+                  className="w-full px-4 py-3.5 text-sm bg-white/80 border border-gray-200 rounded-xl focus:outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100 focus:bg-white transition-all duration-200 disabled:opacity-50 placeholder:text-gray-400 shadow-premium"
                   style={{ fontFamily: MONO }}
                 />
                 {sandboxMint && !sandboxIsLoading && (
@@ -605,7 +608,7 @@ export default function Dashboard() {
               <button
                 onClick={() => handleSandboxAnalyze()}
                 disabled={sandboxIsLoading || !sandboxMint.trim()}
-                className="px-6 py-3.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
+                className="px-6 py-3.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 hover:shadow-premium-hover transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
               >
                 {sandboxIsLoading ? (
                   <>
@@ -731,7 +734,7 @@ export default function Dashboard() {
                   className="mb-6"
                 >
                   {/* Token Header */}
-                  <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
+                  <div className="border border-gray-200/80 rounded-2xl overflow-hidden mb-4 shadow-premium">
                     <div className="bg-gray-50 px-5 py-4 border-b border-gray-200">
                       <div className="flex items-center justify-between">
                         <div>
@@ -973,13 +976,14 @@ export default function Dashboard() {
       {/* ================================================================== */}
       {/* SECTION 2.5: AGENT LIVE DECISIONS                                   */}
       {/* ================================================================== */}
-      <section className="bg-white border-b border-gray-100 py-16 sm:py-24">
+      <section className="relative bg-white py-16 sm:py-24">
+        <div className="section-divider absolute bottom-0 left-0 right-0" />
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionInView>
             <div className="flex items-center justify-between mb-6">
               <div>
                 <div className="flex items-center gap-2.5">
-                  <h2 className="text-xl font-semibold text-gray-900">Agent Live Decisions</h2>
+                  <h2 className="text-xl font-bold text-gray-900">Agent Live Decisions</h2>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-gray-50 border border-gray-200">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     <span className="text-[10px] font-medium text-gray-500">Live</span>
@@ -1025,12 +1029,12 @@ export default function Dashboard() {
       {/* ================================================================== */}
       {/* SECTION 3: LIVE TOKEN SCANNER                                       */}
       {/* ================================================================== */}
-      <section id="scanner" className="bg-[#fafafa] border-b border-gray-100 py-16 sm:py-24">
+      <section id="scanner" className="relative bg-[#fafafa] py-16 sm:py-24 dot-grid-subtle">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionInView>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Live Scanner</h2>
+                <h2 className="text-xl font-bold text-gray-900">Live Scanner</h2>
                 <p className="text-sm text-gray-500 mt-1">Real-time monitoring of trends.fun token launches</p>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -1038,10 +1042,10 @@ export default function Dashboard() {
                   <button
                     key={f}
                     onClick={() => setFilter(f)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-full transition-all duration-200 ${
                       filter === f
-                        ? 'bg-gray-900 text-white'
-                        : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-gray-300'
+                        ? 'bg-gray-900 text-white shadow-premium'
+                        : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:shadow-sm'
                     }`}
                   >
                     {f === 'all' ? 'All' : f === 'hot' ? 'Hot' : f === 'graduating' ? 'Graduating' : 'Graduated'}
@@ -1170,7 +1174,7 @@ export default function Dashboard() {
                   <motion.div
                     key={event.id}
                     variants={staggerItem}
-                    className="bg-gray-50 rounded-xl border border-gray-200 px-5 py-4"
+                    className="bg-white/80 rounded-2xl border border-gray-200/60 px-5 py-4 shadow-premium card-hover"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -1229,10 +1233,10 @@ export default function Dashboard() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5 }}
-                className="border border-gray-200 rounded-xl overflow-hidden"
+                className="border border-gray-200/60 rounded-2xl overflow-hidden shadow-premium"
               >
                 {/* Trade header */}
-                <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                <div className="bg-gray-50/80 px-6 py-4 border-b border-gray-100">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-emerald-50 border-2 border-emerald-200 flex items-center justify-center">
@@ -1327,7 +1331,7 @@ export default function Dashboard() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl mx-auto">
               {/* SDK Panel */}
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="bg-white/90 rounded-2xl border border-gray-200/60 p-6 shadow-premium card-hover">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-7 h-7 rounded-md bg-gray-900 flex items-center justify-center">
                     <span className="text-white text-xs font-bold">TS</span>
@@ -1358,7 +1362,7 @@ export default function Dashboard() {
               </div>
 
               {/* MCP Panel */}
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="bg-white/90 rounded-2xl border border-gray-200/60 p-6 shadow-premium card-hover">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-7 h-7 rounded-md bg-blue-600 flex items-center justify-center">
                     <span className="text-white text-xs font-bold">M</span>
@@ -1504,7 +1508,7 @@ function HeroScoreCircle({ score }: { score: number }) {
   const dash = (score / 100) * circ
 
   return (
-    <div className="relative flex-shrink-0">
+    <div className={`relative flex-shrink-0 ${score >= 75 ? 'score-glow-high' : score >= 40 ? 'score-glow-mid' : ''}`}>
       <svg width="76" height="76" viewBox="0 0 76 76">
         <circle cx="38" cy="38" r={r} fill="none" stroke="#f3f4f6" strokeWidth="4" />
         <motion.circle
@@ -1817,9 +1821,9 @@ function AnimatedStatCard({
     format === 'sol' ? (value >= 0 ? 'text-emerald-600' : 'text-red-500') : 'text-gray-900'
 
   return (
-    <div ref={ref} className="bg-gray-50 rounded-xl border border-gray-200 p-4 text-center">
-      <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 mb-1">{label}</p>
-      <p className={`text-2xl sm:text-3xl font-bold ${valueColor}`} style={{ fontFamily: MONO }}>
+    <div ref={ref} className="bg-white/80 rounded-2xl border border-gray-200/60 p-5 text-center shadow-premium">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 mb-1.5">{label}</p>
+      <p className={`text-3xl sm:text-4xl font-extrabold ${valueColor}`} style={{ fontFamily: MONO }}>
         {display}
         {format === 'sol' && <span className="text-sm font-normal text-gray-400 ml-1">SOL</span>}
       </p>
@@ -1969,8 +1973,8 @@ function ScannerTokenRow({
     <motion.div variants={staggerItem}>
       <div
         onClick={() => setExpanded(!expanded)}
-        className={`bg-white rounded-lg border cursor-pointer transition-all ${
-          expanded ? 'border-gray-300 shadow-sm' : 'border-gray-200 hover:border-gray-300'
+        className={`bg-white/90 rounded-xl border cursor-pointer transition-all duration-200 ${
+          expanded ? 'border-gray-300 shadow-premium' : 'border-gray-200/60 hover:border-gray-300 hover:shadow-sm'
         }`}
       >
         <div className="px-4 py-3 flex items-center gap-4">
@@ -2123,14 +2127,14 @@ function PredictionCard({ prediction }: { prediction: Prediction }) {
           : 'bg-gray-300'
 
   return (
-    <motion.div variants={staggerItem} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-shadow">
+    <motion.div variants={staggerItem} className="bg-white/90 rounded-2xl border border-gray-200/60 p-5 shadow-premium card-hover">
       {/* Header: Score ring + name */}
       <div className="flex items-start justify-between mb-3">
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-semibold text-gray-900 truncate">{prediction.name}</h3>
           <p className="text-xs text-gray-400" style={{ fontFamily: MONO }}>${prediction.symbol}</p>
         </div>
-        <div className="relative flex-shrink-0 ml-3">
+        <div className={`relative flex-shrink-0 ml-3 ${prediction.score >= 75 ? 'score-glow-high' : prediction.score >= 50 ? 'score-glow-mid' : 'score-glow-low'}`}>
           <svg width="64" height="64" viewBox="0 0 64 64">
             <circle cx="32" cy="32" r={radius} fill="none" stroke="#f3f4f6" strokeWidth="3" />
             <motion.circle
@@ -2239,9 +2243,9 @@ function AgentDecisionCard({ decision }: { decision: AgentDecision }) {
 
   return (
     <motion.div variants={staggerItem}>
-      <div className="border border-gray-200 rounded-xl bg-white hover:shadow-sm transition-shadow">
+      <div className="border border-gray-200/60 rounded-2xl bg-white/90 shadow-premium card-hover">
         {/* Header */}
-        <div className="bg-gray-50 px-4 py-3 rounded-t-xl border-b border-gray-200">
+        <div className="bg-gray-50/80 px-4 py-3 rounded-t-2xl border-b border-gray-100">
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">

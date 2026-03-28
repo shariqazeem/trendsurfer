@@ -35,6 +35,11 @@ const config: Config = {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['JetBrains Mono', 'SF Mono', 'monospace'],
       },
+      boxShadow: {
+        'premium': '0 4px 30px -4px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.02)',
+        'premium-hover': '0 12px 40px -8px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.03)',
+        'premium-lg': '0 20px 60px -15px rgba(0, 0, 0, 0.1)',
+      },
     },
   },
   plugins: [],

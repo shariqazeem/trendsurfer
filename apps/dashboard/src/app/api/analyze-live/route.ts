@@ -109,6 +109,7 @@ async function analyzeMint(mint: string): Promise<AnalysisResult> {
   let tweetAuthor: string | undefined
   let tweetContent: string | undefined
 
+  // Try Helius DAS for token metadata
   try {
     const dasRes = await fetch(HELIUS_RPC_URL, {
       method: 'POST',
@@ -132,25 +133,53 @@ async function analyzeMint(mint: string): Promise<AnalysisResult> {
       const desc = asset.content?.metadata?.description || ''
       const authorMatch = desc.match(/@(\w+)/)
       if (authorMatch) tweetAuthor = authorMatch[1]
-      // Extract tweet content from DAS description (often contains the tweet text)
       if (desc && desc.length > 10) {
         tweetContent = desc
       }
     }
   } catch {
-    // Helius DAS failed — try Bitget for token info
+    // DAS network error — will try fallbacks below
+  }
+
+  // Fallback: if DAS returned Unknown, try Bitget token info
+  if (name === 'Unknown' || symbol === 'UNK') {
     try {
       const info = await bitgetPost('/market/v3/coin/batchGetBaseInfo', {
         list: [{ chain: 'sol', contract: mint }],
       })
       if (info?.[0]) {
-        name = info[0].tokenName || info[0].name || name
-        symbol = info[0].tokenSymbol || info[0].symbol || symbol
+        if (name === 'Unknown') name = info[0].tokenName || info[0].name || name
+        if (symbol === 'UNK') symbol = info[0].tokenSymbol || info[0].symbol || symbol
       }
     } catch {
-      // Both failed — continue with defaults
+      // Bitget also failed
     }
   }
+
+  // Fallback: if still Unknown, try Helius token-metadata API
+  if (name === 'Unknown' || symbol === 'UNK') {
+    try {
+      const metaRes = await fetch(`https://api.helius.xyz/v0/token-metadata?api-key=${HELIUS_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mintAccounts: [mint] }),
+      })
+      const metaData = await metaRes.json()
+      if (metaData?.[0]) {
+        const m = metaData[0]
+        if (name === 'Unknown') name = m.onChainMetadata?.metadata?.data?.name?.replace(/\0/g, '').trim() || m.legacyMetadata?.name || name
+        if (symbol === 'UNK') symbol = m.onChainMetadata?.metadata?.data?.symbol?.replace(/\0/g, '').trim() || m.legacyMetadata?.symbol || symbol
+      }
+    } catch {
+      // All metadata lookups failed — use defaults
+    }
+  }
+
+  // Final cleanup: trim null bytes and whitespace from name/symbol
+  name = name.replace(/\0/g, '').trim()
+  symbol = symbol.replace(/\0/g, '').trim()
+  if (!name || name === 'null') name = 'Unknown Token'
+  if (!symbol || symbol === 'null') symbol = mint.substring(0, 6)
 
   // 2. Find the Meteora DBC pool for this mint
   //    Search program accounts where baseMint (offset 136) matches our mint
