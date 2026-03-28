@@ -112,6 +112,18 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: 'score_dev_wallet',
+      description:
+        'Score a token creator\'s wallet risk using GoldRush (Covalent) on-chain data. Returns wallet age, portfolio diversity, transaction history, and a risk score (0-100). Requires GOLDRUSH_API_KEY env var.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          walletAddress: { type: 'string', description: 'Solana wallet address of the token creator' },
+        },
+        required: ['walletAddress'],
+      },
+    },
+    {
       name: 'get_launches',
       description: 'Get all currently tracked/cached token launches.',
       inputSchema: {
@@ -225,6 +237,40 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             },
           ],
         }
+      }
+
+      case 'score_dev_wallet': {
+        const walletAddr = args!.walletAddress as string
+        const goldrushKey = process.env.GOLDRUSH_API_KEY
+        if (!goldrushKey) {
+          return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'GOLDRUSH_API_KEY not configured. Get a free key at goldrush.dev' }) }] }
+        }
+        // Fetch wallet data from GoldRush
+        const [balRes, txRes] = await Promise.allSettled([
+          fetch(`https://api.covalenthq.com/v1/solana-mainnet/address/${walletAddr}/balances_v2/?key=${goldrushKey}&no-spam=true`, { signal: AbortSignal.timeout(8000) }),
+          fetch(`https://api.covalenthq.com/v1/solana-mainnet/address/${walletAddr}/transactions_v3/?key=${goldrushKey}&page=0&page-size=20`, { signal: AbortSignal.timeout(8000) }),
+        ])
+        let totalTokens = 0, totalValueUsd = 0, txCount = 0, walletAgeDays = 0, flags: string[] = []
+        if (balRes.status === 'fulfilled' && balRes.value.ok) {
+          const d = await balRes.value.json(); const items = d?.data?.items || []
+          totalTokens = items.length; totalValueUsd = items.reduce((s: number, i: any) => s + (i.quote || 0), 0)
+        }
+        if (txRes.status === 'fulfilled' && txRes.value.ok) {
+          const d = await txRes.value.json(); const items = d?.data?.items || []
+          txCount = d?.data?.pagination?.total_count || items.length
+          if (items.length > 0) { const oldest = items[items.length - 1]; walletAgeDays = Math.max(0, Math.floor((Date.now() - new Date(oldest.block_signed_at).getTime()) / 86400000)) }
+        }
+        let score = 50
+        if (walletAgeDays >= 180) score += 20; else if (walletAgeDays >= 30) score += 10; else if (walletAgeDays < 7) { score -= 15; flags.push('New wallet') }
+        if (totalTokens >= 10) score += 10; else if (totalTokens <= 1) { score -= 10; flags.push('Minimal portfolio') }
+        if (totalValueUsd >= 1000) score += 10; else if (totalValueUsd >= 100) score += 5
+        if (txCount >= 50) score += 10; else if (txCount < 5) { score -= 10; flags.push('Low activity') }
+        score = Math.max(0, Math.min(100, score))
+        return { content: [{ type: 'text' as const, text: JSON.stringify({
+          address: walletAddr, walletAgeDays, totalTokens, totalValueUsd: Math.round(totalValueUsd),
+          transactionCount: txCount, riskScore: score,
+          riskLevel: score >= 65 ? 'low' : score >= 40 ? 'medium' : 'high', flags,
+        }, null, 2) }] }
       }
 
       case 'get_launches': {
