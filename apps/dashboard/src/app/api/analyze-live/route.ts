@@ -236,9 +236,11 @@ async function analyzeMint(mint: string): Promise<AnalysisResult> {
       const info = await bitgetPost('/market/v3/coin/batchGetBaseInfo', {
         list: [{ chain: 'sol', contract: mint }],
       })
-      if (info?.[0]) {
-        if (name === 'Unknown') name = info[0].tokenName || info[0].name || name
-        if (symbol === 'UNK') symbol = info[0].tokenSymbol || info[0].symbol || symbol
+      // bitgetPost strips outer `data`, so result is { list: [...] } or directly [...]
+      const item = info?.list?.[0] || info?.[0] || (Array.isArray(info) ? info[0] : null)
+      if (item) {
+        if (name === 'Unknown') name = item.name || item.tokenName || name
+        if (symbol === 'UNK') symbol = item.symbol || item.tokenSymbol || symbol
       }
     } catch {
       // Bitget also failed
