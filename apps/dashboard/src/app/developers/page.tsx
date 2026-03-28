@@ -86,6 +86,11 @@ const mcpTools = [
     description: 'Refresh bonding curve progress for all tracked launches from on-chain state.',
     returnType: 'TokenLaunch[]',
   },
+  {
+    name: 'score_dev_wallet',
+    description: 'Score a token creator\'s wallet risk using GoldRush (Covalent). Returns wallet age, portfolio, activity, and risk level.',
+    returnType: 'CreatorProfile',
+  },
 ]
 
 // ────────────────────────────────────────────────────────────────────────────────
@@ -219,7 +224,8 @@ if (security.safe) { /* proceed */ }`,
         example: `const quote = await skill.getQuote({
   tokenMint: mint,
   side: 'buy',
-  amountSol: '0.1',
+  amount: '0.1',
+  walletAddress: myWallet,
 })`,
       },
       {

@@ -213,6 +213,7 @@ export default function Dashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const sandboxInputRef = useRef<HTMLInputElement>(null)
+  const autoAnalyzedRef = useRef(false)
 
   const sandboxIsLoading = sandboxPhase === 'validating' || sandboxPhase === 'fetching' || sandboxPhase === 'analyzing'
 
@@ -313,6 +314,17 @@ export default function Dashboard() {
     const interval = setInterval(fetchAll, 30000) // Poll every 30s to conserve Turso reads
     return () => clearInterval(interval)
   }, [fetchAll])
+
+  // Auto-analyze top trending token on first visit (judges see results immediately)
+  useEffect(() => {
+    if (autoAnalyzedRef.current || trendingTokens.length === 0 || sandboxPhase !== 'idle') return
+    autoAnalyzedRef.current = true
+    // Small delay so the hero animation completes first
+    const timer = setTimeout(() => {
+      handleSandboxAnalyze(trendingTokens[0].mint)
+    }, 1500)
+    return () => clearTimeout(timer)
+  }, [trendingTokens, sandboxPhase, handleSandboxAnalyze])
 
   // Fetch agent decisions every 10s
   const fetchDecisions = useCallback(async () => {

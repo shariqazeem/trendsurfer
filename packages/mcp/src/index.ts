@@ -17,7 +17,7 @@ const skill = new TrendSurferSkill({
 const server = new Server(
   {
     name: 'trendsurfer',
-    version: '0.3.0',
+    version: '0.4.0',
   },
   {
     capabilities: {
