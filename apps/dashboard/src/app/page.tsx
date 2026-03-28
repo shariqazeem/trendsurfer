@@ -1330,13 +1330,15 @@ export default function Dashboard() {
       {/* ================================================================== */}
       {/* SECTION 6: FOR DEVELOPERS                                           */}
       {/* ================================================================== */}
-      <section className="relative bg-gray-950 py-16 sm:py-24">
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+      <section className="relative bg-[#fafafa] py-16 sm:py-24">
+        <div className="absolute inset-0 dot-grid-subtle opacity-30" />
+        <div className="section-divider absolute top-0 left-0 right-0" />
+        <div className="section-divider absolute bottom-0 left-0 right-0" />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
           <SectionInView>
             <div className="text-center mb-8">
-              <h2 className="text-xl font-bold text-white">Use TrendSurfer in Your Agent</h2>
-              <p className="text-sm text-gray-400 mt-1">
+              <h2 className="text-xl font-bold text-gray-900">Use TrendSurfer in Your Agent</h2>
+              <p className="text-sm text-gray-500 mt-1">
                 Reusable SDK + MCP server for any AI agent framework
               </p>
             </div>
