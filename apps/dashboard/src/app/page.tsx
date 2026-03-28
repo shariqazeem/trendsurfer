@@ -561,7 +561,7 @@ export default function Dashboard() {
               className="flex items-center justify-center gap-5 mt-6 flex-wrap"
             >
               <span className="text-[10px] uppercase tracking-wider text-gray-300 font-medium">Built with</span>
-              {['trends.fun', 'Solana', 'CommonStack AI', 'Meteora', 'Helius'].map((name, i) => (
+              {['trends.fun', 'Solana', 'CommonStack AI', 'GoldRush', 'Meteora', 'Helius'].map((name, i) => (
                 <span key={name} className="flex items-center gap-5">
                   {i > 0 && <span className="w-px h-3 bg-gray-200" />}
                   <span className="text-[11px] font-semibold text-gray-400 tracking-wide">{name}</span>
@@ -1556,6 +1556,7 @@ export default function Dashboard() {
             <a href="https://trends.fun" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-gray-300 hover:text-gray-500 transition-colors">trends.fun</a>
             <a href="https://solana.com" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-gray-300 hover:text-gray-500 transition-colors">Solana</a>
             <a href="https://commonstack.ai" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-gray-300 hover:text-gray-500 transition-colors">CommonStack AI</a>
+            <a href="https://goldrush.dev" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-gray-300 hover:text-gray-500 transition-colors">GoldRush</a>
             <span className="text-sm font-bold text-gray-300">Meteora</span>
             <a href="https://helius.dev" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-gray-300 hover:text-gray-500 transition-colors">Helius</a>
           </div>
@@ -1577,7 +1578,7 @@ export default function Dashboard() {
               <Link href="/sandbox" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Sandbox</Link>
             </div>
             <p className="text-[10px] text-gray-300 mt-6">Built for Solana Agent Economy Hackathon: Agent Talent Show 2026</p>
-            <p className="text-[10px] text-gray-300 mt-1">Solana &middot; trends.fun &middot; CommonStack AI &middot; Meteora DBC &middot; Helius &middot; MCP &middot; x402</p>
+            <p className="text-[10px] text-gray-300 mt-1">Solana &middot; trends.fun &middot; CommonStack AI &middot; GoldRush &middot; Meteora DBC &middot; Helius &middot; MCP &middot; x402</p>
           </div>
         </div>
       </footer>

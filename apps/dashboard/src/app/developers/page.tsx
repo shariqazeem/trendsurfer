@@ -967,7 +967,7 @@ const data = await paid.json()
             <h2 className="text-xl font-bold text-gray-900 tracking-tight">Architecture</h2>
             <p className="text-[15px] text-gray-500 mt-2 leading-relaxed">
               TrendSurfer sits between your agent and the Solana blockchain, providing structured
-              intelligence about trends.fun token launches. AI analysis powered by <a href="https://commonstack.ai" target="_blank" rel="noopener noreferrer" className="text-gray-700 font-medium hover:text-blue-600 transition-colors">CommonStack</a>.
+              intelligence about trends.fun token launches. AI analysis powered by <a href="https://commonstack.ai" target="_blank" rel="noopener noreferrer" className="text-gray-700 font-medium hover:text-blue-600 transition-colors">CommonStack</a>. Creator wallet risk scoring by <a href="https://goldrush.dev" target="_blank" rel="noopener noreferrer" className="text-gray-700 font-medium hover:text-blue-600 transition-colors">GoldRush</a>.
             </p>
 
             <div className="mt-8">
