@@ -537,8 +537,24 @@ export default function Dashboard() {
               <span className="text-blue-600">trends.fun</span>
             </h1>
             <p className="text-base sm:text-lg text-gray-500 mt-3 max-w-2xl mx-auto">
-              Paste any token mint address &rarr; instant graduation analysis
+              AI-powered graduation prediction for Meteora DBC tokens. SDK, MCP, and x402 API.
             </p>
+            {/* Sponsor / Partner logos */}
+            <div className="flex items-center justify-center gap-5 mt-5 flex-wrap">
+              <span className="text-[10px] uppercase tracking-wider text-gray-300 font-medium">Built with</span>
+              <a href="https://trends.fun" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors">trends.fun</a>
+              <span className="w-px h-3 bg-gray-200" />
+              <a href="https://solana.com" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors">Solana</a>
+              <span className="w-px h-3 bg-gray-200" />
+              <a href="https://commonstack.ai" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2"/><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3"/></svg>
+                CommonStack AI
+              </a>
+              <span className="w-px h-3 bg-gray-200" />
+              <span className="text-xs font-semibold text-gray-400">Meteora DBC</span>
+              <span className="w-px h-3 bg-gray-200" />
+              <span className="text-xs font-semibold text-gray-400">Helius</span>
+            </div>
           </motion.div>
 
           {/* Live Stats Ticker */}
@@ -810,6 +826,9 @@ export default function Dashboard() {
                         <span className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">
                           AI Analysis
                         </span>
+                        <a href="https://commonstack.ai" target="_blank" rel="noopener noreferrer" className="text-[9px] text-gray-300 hover:text-gray-500 transition-colors ml-1" style={{ fontFamily: MONO }}>
+                          via CommonStack
+                        </a>
                         <span className={`ml-auto px-2 py-0.5 text-[10px] font-semibold rounded ${
                           sandboxAnalysis.prediction === 'will_graduate' ? 'bg-emerald-50 text-emerald-700'
                             : sandboxAnalysis.prediction === 'watching' ? 'bg-blue-50 text-blue-700'
@@ -911,7 +930,7 @@ export default function Dashboard() {
                     className="bg-gray-50 border border-gray-200 rounded-lg p-5 text-center"
                   >
                     <p className="text-xs text-gray-500">
-                      Powered by the <span className="font-semibold text-gray-900">TrendSurfer SDK</span>.
+                      Powered by <span className="font-semibold text-gray-900">TrendSurfer SDK</span> + <a href="https://commonstack.ai" target="_blank" rel="noopener noreferrer" className="font-semibold text-gray-900 hover:text-blue-600 transition-colors">CommonStack AI</a>.
                       Run this same analysis in your own agent:
                     </p>
                     <div className="mt-3 flex items-center justify-center gap-2">
@@ -1078,7 +1097,7 @@ export default function Dashboard() {
           <SectionInView>
             <div className="mb-6">
               <h2 className="text-xl font-semibold text-gray-900">Recent Predictions</h2>
-              <p className="text-sm text-gray-500 mt-1">AI-powered graduation scoring with full reasoning</p>
+              <p className="text-sm text-gray-500 mt-1">Graduation scoring powered by <a href="https://commonstack.ai" target="_blank" rel="noopener noreferrer" className="text-gray-700 font-medium hover:text-blue-600 transition-colors">CommonStack AI</a> with full reasoning</p>
             </div>
 
             {predictions.length === 0 ? (
@@ -1437,24 +1456,37 @@ export default function Dashboard() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-100 py-10">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-6 h-6 rounded-md bg-gray-900 flex items-center justify-center">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                <path d="M2 12L6 4l4 8 4-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+      <footer className="border-t border-gray-100 py-12">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          {/* Partner / Sponsor bar */}
+          <div className="flex items-center justify-center gap-6 mb-8 flex-wrap">
+            <span className="text-[10px] uppercase tracking-wider text-gray-300 font-medium">Powered by</span>
+            <a href="https://trends.fun" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-gray-300 hover:text-gray-500 transition-colors">trends.fun</a>
+            <a href="https://solana.com" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-gray-300 hover:text-gray-500 transition-colors">Solana</a>
+            <a href="https://commonstack.ai" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-gray-300 hover:text-gray-500 transition-colors">CommonStack AI</a>
+            <span className="text-sm font-bold text-gray-300">Meteora</span>
+            <a href="https://helius.dev" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-gray-300 hover:text-gray-500 transition-colors">Helius</a>
+          </div>
+
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="w-6 h-6 rounded-md bg-gray-900 flex items-center justify-center">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                  <path d="M2 12L6 4l4 8 4-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <span className="text-sm font-semibold text-gray-900">TrendSurfer</span>
             </div>
-            <span className="text-sm font-semibold text-gray-900">TrendSurfer</span>
+            <p className="text-xs text-gray-400 mb-4">The intelligence skill for trends.fun &middot; AI by <a href="https://commonstack.ai" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-700 transition-colors">CommonStack</a></p>
+            <div className="flex items-center justify-center gap-6">
+              <a href="https://github.com/shariqazeem/trendsurfer" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">GitHub</a>
+              <a href="https://www.npmjs.com/package/trendsurfer-skill" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">npm</a>
+              <Link href="/developers" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Docs</Link>
+              <Link href="/sandbox" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Sandbox</Link>
+            </div>
+            <p className="text-[10px] text-gray-300 mt-6">Built for Solana Agent Economy Hackathon: Agent Talent Show 2026</p>
+            <p className="text-[10px] text-gray-300 mt-1">Solana &middot; trends.fun &middot; CommonStack AI &middot; Meteora DBC &middot; Helius &middot; MCP &middot; x402</p>
           </div>
-          <p className="text-xs text-gray-400 mb-4">The intelligence skill for trends.fun</p>
-          <div className="flex items-center justify-center gap-6">
-            <a href="https://github.com/shariqazeem/trendsurfer" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">GitHub</a>
-            <a href="https://www.npmjs.com/package/trendsurfer-skill" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">npm</a>
-            <Link href="/developers" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Docs</Link>
-            <Link href="/sandbox" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Sandbox</Link>
-          </div>
-          <p className="text-[10px] text-gray-300 mt-6">Built for Agent Talent Show 2026 · Solana · Meteora DBC · trends.fun · Helius · MCP · x402</p>
         </div>
       </footer>
     </div>
@@ -1840,7 +1872,7 @@ function HowItWorksSection() {
         </svg>
       ),
       title: 'TrendSurfer Predicts',
-      desc: 'AI scores graduation probability',
+      desc: 'CommonStack AI scores graduation probability',
     },
     {
       icon: (
@@ -2139,6 +2171,10 @@ function PredictionCard({ prediction }: { prediction: Prediction }) {
       </div>
 
       {/* AI reasoning -- click to expand */}
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <span className="text-[9px] uppercase tracking-wider text-gray-300 font-medium">AI Reasoning</span>
+        <span className="text-[8px] text-gray-300" style={{ fontFamily: MONO }}>via CommonStack</span>
+      </div>
       <button
         onClick={() => setExpanded(!expanded)}
         className="text-left w-full mb-3 group"
