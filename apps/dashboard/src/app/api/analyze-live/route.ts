@@ -66,13 +66,15 @@ interface CreatorProfile {
   totalTokens: number
   totalValueUsd: number
   transactionCount: number
-  riskScore: number        // 0-100 (0 = high risk, 100 = safe)
+  riskScore: number
   riskLevel: 'low' | 'medium' | 'high'
   flags: string[]
+  devTokensCreated?: number
+  devRugCount?: number
 }
 
-async function scoreDevWallet(creatorAddress: string): Promise<CreatorProfile | null> {
-  if (!GOLDRUSH_API_KEY || !creatorAddress) return null
+async function scoreDevWallet(creatorAddress: string, tokenMint?: string): Promise<CreatorProfile | null> {
+  if (!creatorAddress) return null
 
   const profile: CreatorProfile = {
     address: creatorAddress,
@@ -119,6 +121,20 @@ async function scoreDevWallet(creatorAddress: string): Promise<CreatorProfile | 
     }
   } catch { /* tx fetch failed */ }
 
+  // 2b. Bitget: creator rug history (no API key needed)
+  if (tokenMint) {
+    try {
+      const info = await bitgetPost('/market/v3/coin/batchGetBaseInfo', {
+        list: [{ chain: 'sol', contract: tokenMint }],
+      })
+      const item = info?.list?.[0] || info?.[0]
+      if (item) {
+        profile.devTokensCreated = item.dev_issue_coin_count ?? undefined
+        profile.devRugCount = item.dev_rug_coin_count ?? undefined
+      }
+    } catch { /* Bitget failed */ }
+  }
+
   // 3. Score the wallet
   let score = 50
 
@@ -140,6 +156,16 @@ async function scoreDevWallet(creatorAddress: string): Promise<CreatorProfile | 
   if (profile.transactionCount >= 50) score += 10
   else if (profile.transactionCount >= 10) score += 5
   else if (profile.transactionCount < 5) { score -= 10; profile.flags.push('Low activity') }
+
+  // Rug history — the killer signal
+  if (profile.devRugCount !== undefined && profile.devRugCount > 0) {
+    const rugRatio = profile.devTokensCreated ? profile.devRugCount / profile.devTokensCreated : 1
+    if (rugRatio >= 0.5) { score -= 30; profile.flags.push(`Serial rugger (${profile.devRugCount}/${profile.devTokensCreated} rugged)`) }
+    else { score -= 15; profile.flags.push(`${profile.devRugCount} past rug(s)`) }
+  }
+  if (profile.devTokensCreated && profile.devTokensCreated >= 10) {
+    profile.flags.push(`${profile.devTokensCreated} tokens created`)
+  }
 
   profile.riskScore = Math.max(0, Math.min(100, score))
   profile.riskLevel = profile.riskScore >= 65 ? 'low' : profile.riskScore >= 40 ? 'medium' : 'high'
@@ -352,7 +378,7 @@ async function analyzeMint(mint: string): Promise<AnalysisResult> {
       }
     })(),
     // Creator wallet scoring via GoldRush
-    scoreDevWallet(creatorAddress),
+    scoreDevWallet(creatorAddress, mint),
   ])
 
   if (creatorResult.status === 'fulfilled' && creatorResult.value) {

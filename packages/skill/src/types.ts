@@ -32,3 +32,17 @@ export interface VelocitySnapshot {
   curveProgress: number
   timestamp: number
 }
+
+export interface CreatorProfile {
+  address: string
+  walletAgeDays: number
+  totalTokens: number
+  totalValueUsd: number
+  transactionCount: number
+  riskScore: number          // 0-100 (0 = high risk, 100 = safe)
+  riskLevel: 'low' | 'medium' | 'high'
+  flags: string[]
+  // Bitget creator intel
+  devTokensCreated?: number  // total tokens this dev launched
+  devRugCount?: number       // tokens flagged as rugs
+}

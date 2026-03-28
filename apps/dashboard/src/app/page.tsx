@@ -74,6 +74,8 @@ interface CreatorProfile {
   riskScore: number
   riskLevel: 'low' | 'medium' | 'high'
   flags: string[]
+  devTokensCreated?: number
+  devRugCount?: number
 }
 
 interface Analysis {
@@ -942,7 +944,7 @@ export default function Dashboard() {
                                 : 'HIGH RISK'}
                           </span>
                         </div>
-                        <div className="grid grid-cols-4 gap-3">
+                        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                           <div>
                             <p className="text-[10px] text-gray-400">Wallet Age</p>
                             <p className="text-sm font-semibold text-gray-900" style={{ fontFamily: MONO }}>
@@ -962,9 +964,18 @@ export default function Dashboard() {
                             </p>
                           </div>
                           <div>
-                            <p className="text-[10px] text-gray-400">Transactions</p>
+                            <p className="text-[10px] text-gray-400">Tokens Created</p>
                             <p className="text-sm font-semibold text-gray-900" style={{ fontFamily: MONO }}>
-                              {sandboxAnalysis.creatorProfile.transactionCount}
+                              {sandboxAnalysis.creatorProfile.devTokensCreated ?? '--'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-400">Rug Count</p>
+                            <p className={`text-sm font-semibold ${(sandboxAnalysis.creatorProfile.devRugCount ?? 0) > 0 ? 'text-red-600' : 'text-gray-900'}`} style={{ fontFamily: MONO }}>
+                              {sandboxAnalysis.creatorProfile.devRugCount ?? '--'}
+                              {(sandboxAnalysis.creatorProfile.devRugCount ?? 0) > 0 && sandboxAnalysis.creatorProfile.devTokensCreated && (
+                                <span className="text-[10px] text-red-400 font-normal">/{sandboxAnalysis.creatorProfile.devTokensCreated}</span>
+                              )}
                             </p>
                           </div>
                         </div>

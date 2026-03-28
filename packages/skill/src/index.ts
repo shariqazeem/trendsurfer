@@ -28,7 +28,9 @@ import type {
   TradeExecution,
   SkillConfig,
   ScanResult,
+  CreatorProfile,
 } from './types'
+import { getTokenInfo } from '../../../lib/bitget'
 
 export class TrendSurferSkill {
   private config: SkillConfig
@@ -257,6 +259,124 @@ export class TrendSurferSkill {
     return getTradeStatus(orderId)
   }
 
+  // ── Creator Wallet Risk (GoldRush + Bitget) ──
+
+  /**
+   * Score a token creator's wallet risk using GoldRush (Covalent) on-chain data
+   * and Bitget's creator intelligence (rug history, token deploy count).
+   * Requires GOLDRUSH_API_KEY env var for wallet data.
+   * Bitget data works without an API key.
+   *
+   * @param creatorAddress - Solana wallet address of the token creator
+   * @param tokenMint - Optional: token mint to fetch Bitget creator intel (rug count)
+   */
+  async scoreDevWallet(creatorAddress: string, tokenMint?: string): Promise<CreatorProfile> {
+    const profile: CreatorProfile = {
+      address: creatorAddress,
+      walletAgeDays: 0,
+      totalTokens: 0,
+      totalValueUsd: 0,
+      transactionCount: 0,
+      riskScore: 50,
+      riskLevel: 'medium',
+      flags: [],
+    }
+
+    const goldrushKey = process.env.GOLDRUSH_API_KEY
+    const fetches: Promise<void>[] = []
+
+    // 1. GoldRush: wallet balances + transactions
+    if (goldrushKey) {
+      fetches.push((async () => {
+        try {
+          const res = await fetch(
+            `https://api.covalenthq.com/v1/solana-mainnet/address/${creatorAddress}/balances_v2/?key=${goldrushKey}&no-spam=true`,
+            { signal: AbortSignal.timeout(8000) }
+          )
+          if (res.ok) {
+            const d = await res.json()
+            const items = d?.data?.items || []
+            profile.totalTokens = items.length
+            profile.totalValueUsd = items.reduce((s: number, i: any) => s + (i.quote || 0), 0)
+          }
+        } catch { /* timeout or network */ }
+      })())
+      fetches.push((async () => {
+        try {
+          const res = await fetch(
+            `https://api.covalenthq.com/v1/solana-mainnet/address/${creatorAddress}/transactions_v3/?key=${goldrushKey}&page=0&page-size=20`,
+            { signal: AbortSignal.timeout(8000) }
+          )
+          if (res.ok) {
+            const d = await res.json()
+            const items = d?.data?.items || []
+            profile.transactionCount = d?.data?.pagination?.total_count || items.length
+            if (items.length > 0) {
+              const oldest = items[items.length - 1]
+              const ts = new Date(oldest.block_signed_at || oldest.block_timestamp || Date.now()).getTime()
+              profile.walletAgeDays = Math.max(0, Math.floor((Date.now() - ts) / 86400000))
+            }
+          }
+        } catch { /* timeout or network */ }
+      })())
+    }
+
+    // 2. Bitget: creator rug history (works without API key)
+    if (tokenMint) {
+      fetches.push((async () => {
+        try {
+          const info = await getTokenInfo(tokenMint)
+          const item = info?.list?.[0] || info
+          if (item) {
+            profile.devTokensCreated = item.dev_issue_coin_count ?? undefined
+            profile.devRugCount = item.dev_rug_coin_count ?? undefined
+          }
+        } catch { /* Bitget fetch failed */ }
+      })())
+    }
+
+    await Promise.allSettled(fetches)
+
+    // 3. Score
+    let score = 50
+
+    // Wallet age
+    if (profile.walletAgeDays >= 180) score += 20
+    else if (profile.walletAgeDays >= 30) score += 10
+    else if (profile.walletAgeDays < 7) { score -= 15; profile.flags.push('New wallet (<7 days)') }
+
+    // Portfolio diversity
+    if (profile.totalTokens >= 10) score += 10
+    else if (profile.totalTokens >= 3) score += 5
+    else if (profile.totalTokens <= 1) { score -= 10; profile.flags.push('Minimal portfolio') }
+
+    // Portfolio value
+    if (profile.totalValueUsd >= 1000) score += 10
+    else if (profile.totalValueUsd >= 100) score += 5
+
+    // Activity
+    if (profile.transactionCount >= 50) score += 10
+    else if (profile.transactionCount >= 10) score += 5
+    else if (profile.transactionCount < 5) { score -= 10; profile.flags.push('Low activity') }
+
+    // Rug history (devastating signal)
+    if (profile.devRugCount !== undefined && profile.devRugCount > 0) {
+      const rugRatio = profile.devTokensCreated ? profile.devRugCount / profile.devTokensCreated : 1
+      if (rugRatio >= 0.5) { score -= 30; profile.flags.push(`Serial rugger (${profile.devRugCount}/${profile.devTokensCreated} rugged)`) }
+      else { score -= 15; profile.flags.push(`${profile.devRugCount} past rug(s)`) }
+    }
+
+    // Many tokens created (potential spam deployer)
+    if (profile.devTokensCreated && profile.devTokensCreated >= 10) {
+      profile.flags.push(`${profile.devTokensCreated} tokens created`)
+    }
+
+    profile.riskScore = Math.max(0, Math.min(100, score))
+    profile.riskLevel = profile.riskScore >= 65 ? 'low' : profile.riskScore >= 40 ? 'medium' : 'high'
+
+    return profile
+  }
+
   // ── Utility ──
 
   /** Add a known pool to track */
@@ -287,6 +407,7 @@ export type {
   SkillConfig,
   ScanResult,
   VelocitySnapshot,
+  CreatorProfile,
 } from './types'
 
 // Export individual modules for advanced usage
